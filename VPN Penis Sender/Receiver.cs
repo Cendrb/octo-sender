@@ -46,7 +46,7 @@ namespace VPN_Penis_Sender
                 thread.SetApartmentState(ApartmentState.STA);
                 thread.Start();
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 ServerError("Failed to start the server - " + e.Message);
                 ServerRunning = false;
@@ -62,13 +62,14 @@ namespace VPN_Penis_Sender
         private void receive(Func<string, string> path)
         {
             while (ServerRunning)
-                if (listener.Pending())
+            {
+                try
                 {
                     NumberFormatInfo info = (NumberFormatInfo)CultureInfo.InvariantCulture.NumberFormat.Clone();
                     info.NumberGroupSeparator = " ";
                     info.NumberDecimalDigits = 0;
 
-                    Status("Pending connection!");
+                    Status("Ready to receive on " + listener.LocalEndpoint.ToString());
                     TcpClient client = listener.AcceptTcpClient();
                     Status(String.Format("Connected to {0}", client.Client.LocalEndPoint.ToString()));
 
@@ -103,7 +104,7 @@ namespace VPN_Penis_Sender
                         while ((recBytes = stream.Read(recData, 0, recData.Length)) > 0)
                         {
                             totalRecBytes += recBytes;
-                            if(totalRecBytes > size)
+                            if (totalRecBytes > size)
                             {
                                 recBytes -= (int)(totalRecBytes - size);
                                 totalRecBytes = size;
@@ -138,6 +139,11 @@ namespace VPN_Penis_Sender
                         client.Close();
                     }
                 }
+                catch(SocketException)
+                {
+
+                }
+            }
         }
     }
 }

@@ -84,7 +84,7 @@ namespace VPN_Penis_Sender
         public MainWindow()
         {
             InitializeComponent();
-            //ConsoleManager.Show();
+            //wConsoleManager.Show();
   
             pending = new SoundPlayer("rec.cyp");
             failed = new SoundPlayer("fap.cyp");
@@ -288,6 +288,7 @@ namespace VPN_Penis_Sender
             try
             {
                 Sending = true;
+
                 IPAddress address; // IP validation
                 if (sendIpAddressTextBox.Text == "")
                     address = IPAddress.Any;
@@ -299,15 +300,21 @@ namespace VPN_Penis_Sender
                     throw new ArgumentException("Invalid port");
 
                 // path validation
-                string path = String.Empty;
-                FileInfo file = new FileInfo(getFilePath("Choose file to send"));
-                if(!file.Exists)
-                    throw new ArgumentException("Choosen file does not exist");
+                string path = getFilePath("Choose file to send");
 
-                Thread thread = new Thread(() => sender.Send(file, new IPEndPoint(address, port)));
-                thread.Name = "Sender";
-                thread.Priority = ThreadPriority.AboveNormal;
-                thread.Start();
+                FileInfo file = null;
+                if (path == String.Empty)
+                    Sending = false;
+                else
+                    file = new FileInfo(path);
+
+                if (Sending)
+                {
+                    Thread thread = new Thread(() => sender.Send(file, new IPEndPoint(address, port)));
+                    thread.Name = "Sender";
+                    thread.Priority = ThreadPriority.AboveNormal;
+                    thread.Start();
+                }
             }
             catch (Exception e)
             {

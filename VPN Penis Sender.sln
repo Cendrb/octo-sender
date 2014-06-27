@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VPN Penis Sender", "VPN Penis Sender\VPN Penis Sender.csproj", "{A9A1E42B-6389-4A5F-92A7-95177D1EA8E1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Simple File Sender", "Simple File Sender\Simple File Sender.csproj", "{1EE992D5-9F27-41EF-9F80-0934CC12481F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A9A1E42B-6389-4A5F-92A7-95177D1EA8E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A9A1E42B-6389-4A5F-92A7-95177D1EA8E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A9A1E42B-6389-4A5F-92A7-95177D1EA8E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1EE992D5-9F27-41EF-9F80-0934CC12481F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EE992D5-9F27-41EF-9F80-0934CC12481F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1EE992D5-9F27-41EF-9F80-0934CC12481F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1EE992D5-9F27-41EF-9F80-0934CC12481F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
