@@ -19,6 +19,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Simple_File_Sender
 {
@@ -79,7 +80,6 @@ namespace Simple_File_Sender
 
         private void start()
         {
-
             Thread.CurrentThread.Name = "Sending " + SourceFile.Name;
 
             Running = true;
@@ -96,7 +96,16 @@ namespace Simple_File_Sender
                 Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = false));
                 Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = false));
 
-                Client.Connect(Target.Address, Target.Port);
+                try
+                {
+                    Client.Connect(Target.Address, Target.Port);
+                }
+                catch(SocketException e)
+                {
+                    status("Failed to connect to client");
+                    Console.WriteLine(e.Message);
+                    Running = false;
+                }
 
                 Client.Client.Send(Helpers.GetBytes(SourceFile.Name, sizeof(char) * 128));
                 Client.Client.Send(BitConverter.GetBytes(SourceFile.Length));
@@ -149,7 +158,7 @@ namespace Simple_File_Sender
             }
             catch (SocketException e)
             {
-                status("Failed to connect to client");
+                status("Failed to send file");
                 Console.WriteLine(e.Message);
                 Running = false;
             }
@@ -214,7 +223,7 @@ namespace Simple_File_Sender
         private void updateProgress(long sentBytes, long totalBytes)
         {
             // ProgressLabel
-            ProgressLabel.Content = String.Format("{0} bytes sent of {1} bytes total", sentBytes, totalBytes);
+            ProgressLabel.Content = String.Format("{0} kbytes sent of {1} kbytes total", (sentBytes / 1000).ToString("n", StaticPenises.Format), (totalBytes / 1000).ToString("n", StaticPenises.Format));
 
             // ProgressBar
             ProgressBar.Maximum = totalBytes;
@@ -223,14 +232,14 @@ namespace Simple_File_Sender
 
         private void updateSpeedAndTime(TimeSpan elapsedTime, long sentBytes, long totalBytes)
         {
-            ElapsedTime.Content = elapsedTime.Minutes + ":" + elapsedTime.Seconds;
+            ElapsedTime.Content = elapsedTime.ToString(@"mm\:ss");
 
             double speed = (sentBytes / 1000) / elapsedTime.Seconds;
             SpeedValue.Content = speed + " kb/s";
 
             int remaining = (int)(((totalBytes - sentBytes) / 1000) / speed);
             TimeSpan remainingTime = new TimeSpan(0, 0, remaining);
-            RemainingTime.Content = remainingTime.Minutes + ":" + remainingTime.Seconds;
+            RemainingTime.Content = remainingTime.ToString(@"mm\:ss");
         }
     }
     public class InterruptedByUserException : Exception

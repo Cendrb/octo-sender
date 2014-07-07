@@ -1,0 +1,12 @@
+﻿<Window x:Class="Simple_File_Sender.CloseDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Close or minimize" Height="98" Width="377" ResizeMode="NoResize" Closed="Window_Closed">
+    <Grid>
+        <Label HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
+        <Button x:Name="minimize" Content="Minimize to system tray" Margin="10,10,213,10" Click="minimize_Click"/>
+        <Button x:Name="exit" Content="Exit" Margin="158,10,160,10" Click="exit_Click"/>
+        <Button x:Name="back" Content="Back to Octo Sender" Margin="211,10,12,10" Click="back_Click"/>
+
+    </Grid>
+</Window>

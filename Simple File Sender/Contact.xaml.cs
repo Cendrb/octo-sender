@@ -26,29 +26,44 @@ namespace Simple_File_Sender
     public partial class Contact : UserControl, INotifyPropertyChanged
     {
         public event Action<Contact, string> SendFile = delegate { };
-        private string contactName;
+        public event Action<Contact> Delete = delegate { };
+
         public string ContactName
         {
             get
             {
-                return contactName;
+                return Pair.Name;
             }
             set
             {
-                contactName = value;
+                Pair.Name = value;
                 PropertyChanged(this, new PropertyChangedEventArgs("FormattedIPAndName"));
             }
         }
-        private IPAddress ip;
+
+        public NameIPPair Pair { get; private set; }
+        private bool saved;
+        public bool Saved
+        {
+            get
+            {
+                return saved;
+            }
+            set
+            {
+                saved = value;
+                removeButton.IsEnabled = saved;
+            }
+        }
         public IPAddress IP
         {
             get
             {
-                return ip;
+                return Pair.IP;
             }
             set
             {
-                ip = value;
+                Pair.IP = value;
                 PropertyChanged(this, new PropertyChangedEventArgs("FormattedIPAndName"));
             }
         }
@@ -61,11 +76,12 @@ namespace Simple_File_Sender
             }
         }
 
-        public Contact(string name, IPAddress ip)
+        public Contact(NameIPPair pair)
         {
+            this.Pair = pair;
             InitializeComponent();
-            ContactName = name;
-            IP = ip;
+            ContactName = pair.Name;
+            IP = pair.IP;
             DataContext = this;
         }
         /*
@@ -102,6 +118,8 @@ namespace Simple_File_Sender
         }*/
         public async void PingAndView()
         {
+            StatusLabel.Content = "Pinging...";
+            PingLabel.Content = "Pinging...";
             long ping = await Ping();
             if (ping > -1)
             {
@@ -116,31 +134,30 @@ namespace Simple_File_Sender
 
         }
 
-        public async Task<long> Ping()
+        public Task<long> Ping()
+        {
+            Task<long> task = new Task<long>(new Func<long>(ping));
+            task.Start();
+            return task;
+        }
+
+        private long ping()
         {
             TcpClient client = new TcpClient();
-            try
-            {
-                await client.ConnectAsync(IP, StaticPenises.PingPort);
-                Stopwatch watch = Stopwatch.StartNew();
-                client.Client.Send(Helpers.GetBytes("penis"));
-                byte[] nameBuffer = new byte[sizeof(char) * 128];
-                client.Client.Receive(nameBuffer);
-                Console.WriteLine(Helpers.GetString(nameBuffer));
-                watch.Stop();
-                return watch.ElapsedMilliseconds;
-            }
-            catch (SocketException e)
-            {
-                Console.WriteLine(e.Message);
-                return -1;
-            }
-            finally
+            IAsyncResult result = client.BeginConnect(IP, StaticPenises.PingPort, null, null);
+            Stopwatch watch = Stopwatch.StartNew();
+            result.AsyncWaitHandle.WaitOne(1000, true);
+            watch.Stop();
+            if (client.Connected)
             {
                 client.Close();
+                return watch.ElapsedMilliseconds;
             }
-
-
+            else
+            {
+                client.Close();
+                return -1;
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged = delegate { };
@@ -153,6 +170,21 @@ namespace Simple_File_Sender
             {
                 SendFile(this, dialog.FileName);
             }
+        }
+
+        public static bool operator ==(Contact contact1, Contact contact2)
+        {
+            return contact1.Name == contact2.Name && contact1.IP == contact2.IP;
+        }
+
+        public static bool operator !=(Contact contact1, Contact contact2)
+        {
+            return !(contact1.Name == contact2.Name && contact1.IP == contact2.IP);
+        }
+
+        private void removeButton_Click(object sender, RoutedEventArgs e)
+        {
+            Delete(this);
         }
     }
 }

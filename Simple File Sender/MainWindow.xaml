@@ -1,7 +1,7 @@
 ﻿<Window x:Class="Simple_File_Sender.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Simple Penis Sender" Height="603" Width="943" Closed="Window_Closed">
+        Title="Octo Sender" Height="603" Width="943" Closed="Window_Closed" Closing="Window_Closing">
     <Grid>
         <Grid Margin="0,50,0,0">
             <Grid.ColumnDefinitions>
@@ -14,10 +14,10 @@
             <ListBox x:Name="sendingQueue" HorizontalAlignment="Stretch" Margin="0" VerticalAlignment="Stretch" Grid.Column="2"/>
 
         </Grid>
-        <Label Content="Receiving queue" HorizontalAlignment="Left" Margin="10,0,0,518" VerticalAlignment="Bottom" FontSize="18"/>
-        <Label Content="Contacts list" HorizontalAlignment="Left" Margin="313,0,0,518" VerticalAlignment="Bottom" FontSize="18"/>
-        <Label Content="Sending queue" HorizontalAlignment="Left" Margin="626,0,0,518" VerticalAlignment="Bottom" FontSize="18"/>
-        <Button x:Name="AddContact" Content="Add contact..." HorizontalAlignment="Left" Margin="514,0,0,523" VerticalAlignment="Bottom" Width="84" Click="AddContact_Click"/>
-        <Button x:Name="Refresh" Content="Refresh" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="84" Margin="425,0,0,523" Click="Refresh_Click"/>
+        <Label Content="Receiving queue" HorizontalAlignment="Left" Margin="10,0,0,518" VerticalAlignment="Top" FontSize="18"/>
+        <Label Content="Contacts list" HorizontalAlignment="Left" Margin="313,0,0,518" VerticalAlignment="Top" FontSize="18"/>
+        <Label Content="Sending queue" HorizontalAlignment="Left" Margin="626,0,0,518" VerticalAlignment="Top" FontSize="18"/>
+        <Button x:Name="AddContact" Content="Add contact..." HorizontalAlignment="Left" Margin="514,7,0,0" VerticalAlignment="Top" Width="84" Click="AddContact_Click"/>
+        <Button x:Name="Refresh" Content="Refresh" HorizontalAlignment="Left" VerticalAlignment="Top" Width="84" Margin="425,7,0,0" Click="Refresh_Click"/>
     </Grid>
 </Window>

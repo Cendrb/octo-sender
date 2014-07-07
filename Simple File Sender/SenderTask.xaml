@@ -16,9 +16,9 @@
         <Label x:Name="TargetLabel" Content="from Unknown (0.0.0.0)" HorizontalAlignment="Left" Margin="10,27,0,0" VerticalAlignment="Top"/>
         <Expander Header="Details" HorizontalAlignment="Left" Margin="10,123,0,30" Width="257">
             <Grid Background="#FFE5E5E5">
-                <Label x:Name="SpeedValue" Content="Unknown" HorizontalAlignment="Left" Margin="0,20,0,0" FontSize="11" Height="25" VerticalAlignment="Top"/>
-                <Label x:Name="ElapsedTime" Content="XX:XX" VerticalAlignment="Top" Margin="0,20,17,0" HorizontalAlignment="Right" Width="39" FontSize="11"/>
-                <Label x:Name="RemainingTime" Content="XX:XX" Margin="0,20,0,0" Height="26" VerticalAlignment="Top" HorizontalAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                <Label x:Name="SpeedValue" Content="Calculating..." HorizontalAlignment="Left" Margin="0,20,0,0" FontSize="11" Height="25" VerticalAlignment="Top"/>
+                <Label x:Name="ElapsedTime" Content="00:00" VerticalAlignment="Top" Margin="0,20,17,0" HorizontalAlignment="Right" Width="39" FontSize="11"/>
+                <Label x:Name="RemainingTime" Content="00:00" Margin="0,20,0,0" Height="26" VerticalAlignment="Top" HorizontalAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
                 <Label Content="Speed" HorizontalAlignment="Left" Margin="5,0,0,0" Height="26" VerticalAlignment="Top" FontSize="11"/>
                 <Label Content="Remaining" Margin="0,0,0,0" Height="26" VerticalAlignment="Top" HorizontalAlignment="Center" FontSize="11"/>
                 <Label Content="Elapsed" Height="26" VerticalAlignment="Top" HorizontalAlignment="Right" Width="53" Padding="5,5,0,5" FontSize="11" Margin="0,0,8,0"/>

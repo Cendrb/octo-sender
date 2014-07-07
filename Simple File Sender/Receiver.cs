@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace Simple_File_Sender
@@ -16,10 +17,19 @@ namespace Simple_File_Sender
 
         public ItemCollection tasks { get; private set; }
 
+        public string Name { get; set; }
+
+        public bool Running { get; private set; }
+
+        TcpListener namePingerListener = new TcpListener(IPAddress.Any, StaticPenises.NamePingPort);
+        TcpListener pingerListener = new TcpListener(IPAddress.Any, StaticPenises.PingPort);
+        TcpListener portCommListener = new TcpListener(IPAddress.Any, StaticPenises.MainPort);
+
         public static string Path { get; set; }
 
-        public Receiver(List<int> usedPorts, ItemCollection collection, string path)
+        public Receiver(List<int> usedPorts, ItemCollection collection, string path, string name)
         {
+            Name = name;
             this.usedPorts = usedPorts;
             tasks = collection;
             Path = path;
@@ -27,67 +37,159 @@ namespace Simple_File_Sender
 
         public void Start()
         {
-            Thread thread = new Thread(new ThreadStart(PortListener));
-            thread.SetApartmentState(ApartmentState.MTA);
-            thread.Name = "Port listener";
-            thread.Start();
+            if (!Running)
+            {
+                Running = true;
 
-            Thread pinger = new Thread(new ThreadStart(PingerStart));
-            pinger.Name = "Pinger";
-            pinger.Start();
+                Thread thread = new Thread(new ThreadStart(PortListenerStart));
+                thread.SetApartmentState(ApartmentState.MTA);
+                thread.Name = "Port listener";
+                thread.Start();
+
+                Thread pinger = new Thread(new ThreadStart(PingerStart));
+                pinger.Name = "Ping Receiver";
+                pinger.Start();
+
+                Thread namePinger = new Thread(new ThreadStart(NamePingerStart));
+                namePinger.Name = "Name Ping Receiver";
+                namePinger.Start();
+            }
+            else
+                Console.WriteLine("Receiver already running");
+        }
+
+        public void Stop()
+        {
+            if (Running)
+            {
+                Running = false;
+
+                namePingerListener.Stop();
+                pingerListener.Stop();
+                portCommListener.Stop();
+            }
+            else
+                Console.WriteLine("Receiver not running");
+        }
+
+        private void NamePingerStart()
+        {
+            try
+            {
+                namePingerListener.Start();
+                try
+                {
+                    while (Running)
+                    {
+                        TcpClient client = namePingerListener.AcceptTcpClient();
+                        client.Client.Send(Helpers.GetBytes(Name, sizeof(char) * 128));
+                        client.Close();
+                    }
+                }
+                catch (SocketException e)
+                {
+                    if (Running)
+                    {
+                        Console.WriteLine(e.Message);
+                        Restart();
+                    }
+                }
+            }
+            catch (SocketException e)
+            {
+                MessageBox.Show(e.Message + "\nProgram may not be able to receive files.", "Unable to bind to port " + StaticPenises.NamePingPort);
+                Console.WriteLine(e.Message + " port " + StaticPenises.NamePingPort);
+            }
+        }
+
+        public void Restart()
+        {
+            Stop();
+            Start();
         }
 
         private void PingerStart()
         {
-            TcpListener listener = new TcpListener(IPAddress.Any, 6968);
-            listener.Start();
-            while (true)
+            try
             {
-                TcpClient client = listener.AcceptTcpClient();
-                byte[] nameBuffer = new byte[sizeof(char) * 128];
-                client.Client.Receive(nameBuffer);
-                Console.WriteLine(Helpers.GetString(nameBuffer));
-                client.Client.Send(Helpers.GetBytes("vagina"));
-            }
-        }
+                pingerListener.Start();
 
-        private void PortListener()
-        {
-            TcpListener listener = new TcpListener(IPAddress.Any, 6969);
-
-            listener.Start();
-
-            while (true)
-            {
-                TcpClient client = listener.AcceptTcpClient();
-
-                int receivedPort = 1;
-                int finalPort = 0;
-
-                while (receivedPort != 0)
+                try
                 {
-                    byte[] portBuffer = new byte[sizeof(int)];
-                    client.Client.Receive(portBuffer);
-                    receivedPort = BitConverter.ToInt32(portBuffer, 0);
-
-                    if (receivedPort == 0)
-                        tasks.Dispatcher.Invoke(() => StartNewTask(IPAddress.Any, finalPort));
-                    finalPort = 0;
-
-                    bool localFree = false;
-                    while (!localFree)
+                    while (Running)
                     {
-                        if (!usedPorts.Contains(receivedPort))
-                        {
-                            client.Client.Send(BitConverter.GetBytes(receivedPort));
-                            finalPort = receivedPort;
-                            localFree = true;
-                        }
-                        else
-                            receivedPort++;
+                        TcpClient client = pingerListener.AcceptTcpClient();
+                        client.Close();
                     }
                 }
+                catch (SocketException e)
+                {
+                    if (Running)
+                    {
+                        Console.WriteLine(e.Message);
+                        Restart();
+                    }
+                }
+            }
+            catch (SocketException e)
+            {
+                MessageBox.Show(e.Message + "\nProgram may not be able to receive files.", "Unable to bind to port " + StaticPenises.PingPort);
+                Console.WriteLine(e.Message + " port " + StaticPenises.PingPort);
+            }
+        }
+        private void PortListenerStart()
+        {
+            try
+            {
+                portCommListener.Start();
 
+                try
+                {
+                    while (Running)
+                    {
+                        TcpClient client = portCommListener.AcceptTcpClient();
+
+                        int receivedPort = 1;
+                        int finalPort = 0;
+
+                        while (receivedPort != 0)
+                        {
+                            byte[] portBuffer = new byte[sizeof(int)];
+                            client.Client.Receive(portBuffer);
+                            receivedPort = BitConverter.ToInt32(portBuffer, 0);
+
+                            if (receivedPort == 0)
+                                tasks.Dispatcher.Invoke(() => StartNewTask(IPAddress.Any, finalPort));
+                            finalPort = 0;
+
+                            bool localFree = false;
+                            while (!localFree)
+                            {
+                                if (!usedPorts.Contains(receivedPort))
+                                {
+                                    client.Client.Send(BitConverter.GetBytes(receivedPort));
+                                    finalPort = receivedPort;
+                                    localFree = true;
+                                }
+                                else
+                                    receivedPort++;
+                            }
+                        }
+                    }
+                }
+                catch (SocketException e)
+                {
+                    if (Running)
+                    {
+                        Console.WriteLine(e.Message);
+                        Restart();
+                    }
+                }
+            }
+            catch (SocketException e)
+            {
+                MessageBox.Show(e.Message + "\nProgram may not be able to receive files.", "Unable to bind to port " + StaticPenises.MainPort);
+                Console.WriteLine(e.Message + " port " + StaticPenises.MainPort);
             }
         }
 

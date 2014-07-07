@@ -135,13 +135,13 @@ namespace Simple_File_Sender
                 byte[] md5 = new byte[16];
                 client.Client.Receive(md5);
 
-                status("Validating MD5 sum");
+                status("Validating file using MD5 sum...");
                 file = File.OpenRead(Path.Combine(Receiver.Path, name));
                 using (MD5 outMD5 = MD5.Create())
                 {
                     byte[] hash = outMD5.ComputeHash(file);
                     if (!Enumerable.SequenceEqual(md5, hash))
-                        throw new InvalidOperationException("Received file's md5 sum is not indentical with source. File is damaged and probably could not be opened.");
+                        throw new InvalidOperationException("File is damaged and probably could not be opened");
                 }
 
                 Completed(this);
@@ -151,7 +151,6 @@ namespace Simple_File_Sender
             {
                 status("Failed to connect to client");
                 Console.WriteLine(e.Message);
-                Running = false;
             }
             catch (InterruptedByUserException e)
             {
@@ -178,7 +177,7 @@ namespace Simple_File_Sender
         private void updateProgress(long sentBytes, long totalBytes)
         {
             // ProgressLabel
-            ProgressLabel.Content = String.Format("{0} bytes received of {1} bytes total", sentBytes, totalBytes);
+            ProgressLabel.Content = String.Format("{0} kbytes received of {1} kbytes total", (sentBytes / 1000).ToString("n", StaticPenises.Format), (totalBytes / 1000).ToString("n", StaticPenises.Format));
 
             // ProgressBar
             ProgressBar.Maximum = totalBytes;
@@ -187,14 +186,14 @@ namespace Simple_File_Sender
 
         private void updateSpeedAndTime(TimeSpan elapsedTime, long sentBytes, long totalBytes)
         {
-            ElapsedTime.Content = elapsedTime.Minutes + ":" + elapsedTime.Seconds;
+            ElapsedTime.Content = elapsedTime.ToString(@"mm\:ss");
 
             double speed = (sentBytes / 1000) / elapsedTime.Seconds;
             SpeedValue.Content = speed + " kb/s";
 
             int remaining = (int)(((totalBytes - sentBytes) / 1000) / speed);
             TimeSpan remainingTime = new TimeSpan(0, 0, remaining);
-            RemainingTime.Content = remainingTime.Minutes + ":" + remainingTime.Seconds;
+            RemainingTime.Content = remainingTime.ToString(@"mm\:ss");
         }
 
         private void completed()
