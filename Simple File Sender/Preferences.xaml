@@ -1,8 +1,26 @@
 ﻿<Window x:Class="Simple_File_Sender.Preferences"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Preferences" Height="300" Width="300">
+        Title="Preferences" Height="210" Width="288">
     <Grid>
-        
+        <Button x:Name="CancelButton" Content="CANCEL" VerticalAlignment="Bottom" Width="{Binding ActualWidth, ElementName=SaveButton, Mode=OneWay}" Margin="0,0,10,10" Height="{Binding ActualHeight, ElementName=SaveButton, Mode=OneWay}" HorizontalAlignment="Right" Click="CancelButton_Click"/>
+        <Button x:Name="SaveButton" Content="SAVE" Margin="10,0,0,10" Height="40" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="125" Click="SaveButton_Click"/>
+        <GroupBox Header="Miscellaneous" Margin="10,0,10,55" Height="48" VerticalAlignment="Bottom">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <CheckBox x:Name="ShowLocalClientButton" Content="Show your local client in online contacts" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,7,0,0"/>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Banning" Margin="10,0,10,103" Height="68" VerticalAlignment="Bottom">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <CheckBox x:Name="ShowBlockedContactsButton" Content="Show banned contacts in contacts list" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,7,0,0"/>
+                <CheckBox x:Name="BlindBannedContactsButton" Content="Banned contacts cannot see you" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,27,0,0"/>
+            </Grid>
+        </GroupBox>
     </Grid>
 </Window>

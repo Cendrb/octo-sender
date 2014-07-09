@@ -37,5 +37,10 @@ namespace Simple_File_Sender
         {
             return Name.GetHashCode() + IP.GetHashCode();
         }
+
+        public override string ToString()
+        {
+            return Name + " - " + IP.ToString();
+        }
     }
 }

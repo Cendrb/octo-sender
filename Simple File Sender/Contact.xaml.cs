@@ -27,6 +27,35 @@ namespace Simple_File_Sender
     {
         public event Action<Contact, string> SendFile = delegate { };
         public event Action<Contact> Delete = delegate { };
+        public event Action<Contact> Ban = delegate { };
+        public event Action<Contact> Pardon = delegate { };
+
+        private bool banned;
+        public bool Banned
+        {
+            get
+            {
+                return banned;
+            }
+            set
+            {
+                banned = value;
+                if (!Saved)
+                {
+                    if (banned)
+                    {
+                        removeButton.Content = "Unblock";
+                        removeButton.ToolTip = "Pardons (unbans) contact - allows any incoming communication";
+                    }
+                    else
+                    {
+                        removeButton.Content = "Ban";
+                        removeButton.ToolTip = "Bans contact (IP) - disables any incoming communication";
+                    }
+                }
+                PropertyChanged(this, new PropertyChangedEventArgs("FormattedIPAndName"));
+            }
+        }
 
         public string ContactName
         {
@@ -52,7 +81,16 @@ namespace Simple_File_Sender
             set
             {
                 saved = value;
-                removeButton.IsEnabled = saved;
+                if (saved)
+                {
+                    removeButton.Content = "Remove";
+                    removeButton.ToolTip = "Simply deletes contact from your list";
+                }
+                else
+                {
+                    removeButton.Content = "Ban";
+                    removeButton.ToolTip = "Bans contact (IP) - disables any incoming communication";
+                }
             }
         }
         public IPAddress IP
@@ -72,7 +110,10 @@ namespace Simple_File_Sender
         {
             get
             {
-                return String.Format("{0} ({1})", ContactName, IP.ToString());
+                if (Banned)
+                    return String.Format("{0} ({1}) - BANNED", ContactName, IP.ToString());
+                else
+                    return String.Format("{0} ({1})", ContactName, IP.ToString());
             }
         }
 
@@ -132,7 +173,6 @@ namespace Simple_File_Sender
                 PingLabel.Content = "Unreachable";
                 StatusLabel.Content = "Offline";
             }
-
         }
 
         public Task<long> Ping()
@@ -185,7 +225,21 @@ namespace Simple_File_Sender
 
         private void removeButton_Click(object sender, RoutedEventArgs e)
         {
-            Delete(this);
+            if (saved)
+                Delete(this);
+            else
+            {
+                if (!banned)
+                {
+                    Ban(this);
+                    Banned = true;
+                }
+                else
+                {
+                    Pardon(this);
+                    Banned = false;
+                }
+            }
         }
     }
 }

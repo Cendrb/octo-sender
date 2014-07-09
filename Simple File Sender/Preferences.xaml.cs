@@ -23,5 +23,29 @@ namespace Simple_File_Sender
         {
             InitializeComponent();
         }
+
+        public void ShowDialogLoadAndSave()
+        {
+            ShowBlockedContactsButton.IsChecked = Properties.Settings.Default.ShowBannedContactsInContacts;
+            ShowLocalClientButton.IsChecked = Properties.Settings.Default.ShowLocalClientInContacts;
+            BlindBannedContactsButton.IsChecked = Properties.Settings.Default.BlindBannedContacts;
+
+            ShowDialog();
+        }
+
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.ShowBannedContactsInContacts = ShowBlockedContactsButton.IsChecked.Value;
+            Properties.Settings.Default.ShowLocalClientInContacts = ShowLocalClientButton.IsChecked.Value;
+            Properties.Settings.Default.BlindBannedContacts = BlindBannedContactsButton.IsChecked.Value;
+            Properties.Settings.Default.Save();
+
+            Close();
+        }
+
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
     }
 }

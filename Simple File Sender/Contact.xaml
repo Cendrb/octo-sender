@@ -9,7 +9,7 @@
         <Label x:Name="StatusLabel" Content="Pinging..." HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,29,0,0"/>
         <Label x:Name="PingLabel" Content="Pinging..." HorizontalAlignment="Left" Margin="91,29,0,0" VerticalAlignment="Top"/>
         <Button x:Name="sendFileButton" Content="Send file..." HorizontalAlignment="Left" Margin="215,38,0,0" VerticalAlignment="Top" Width="75" Click="sendFileButton_Click"/>
-        <Button x:Name="removeButton" Content="Remove" HorizontalAlignment="Left" Margin="215,10,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="removeButton_Click"/>
+        <Button x:Name="removeButton" Content="Block" HorizontalAlignment="Left" Margin="215,10,0,0" VerticalAlignment="Top" Width="75" Click="removeButton_Click"/>
 
     </Grid>
 </UserControl>

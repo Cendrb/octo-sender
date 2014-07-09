@@ -49,6 +49,8 @@ namespace Simple_File_Sender
 
         public bool Done { get; private set; }
 
+        public BoolWrapper AskBeforeReceiving { get; set; }
+
         public event Action<ReceiverTask> Completed = delegate { };
         public event Action<ReceiverTask> Delete = delegate { };
 
@@ -57,6 +59,7 @@ namespace Simple_File_Sender
         public ReceiverTask(IPAddress address, int port, Func<string, string> savePath)
         {
             InitializeComponent();
+            AskBeforeReceiving = new BoolWrapper(false);
             Address = address;
             Port = port;
             Done = false;
@@ -105,15 +108,22 @@ namespace Simple_File_Sender
             Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = true));
 
             NetworkStream stream = client.GetStream();
-
-            string path = getSavePath(name, hostName);
-
+       
             try
             {
+                if (AskBeforeReceiving.Value)
+                {
+                    MessageBoxResult result = MessageBox.Show(String.Format("Do you want to receive {0} from {1}?", ReceivedFileName, SenderName), ReceivedFileName, MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result == MessageBoxResult.No)
+                        throw new InterruptedByUserException();
+                }
+
+                string path = getSavePath(ReceivedFileName, SenderName);
+
                 if (path == String.Empty)
                     throw new InterruptedByUserException();
 
-                using (FileStream file = new FileStream(Path.Combine(path, name), FileMode.Create, FileAccess.Write, FileShare.Write))
+                using (FileStream file = new FileStream(Path.Combine(path, ReceivedFileName), FileMode.Create, FileAccess.Write, FileShare.Write))
                 {
 
                     Stopwatch totalWatch = Stopwatch.StartNew();

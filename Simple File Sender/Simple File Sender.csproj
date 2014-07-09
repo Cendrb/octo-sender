@@ -73,6 +73,7 @@
     <Compile Include="BasicInfoDialog.xaml.cs">
       <DependentUpon>BasicInfoDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="BoolWrapper.cs" />
     <Compile Include="CloseDialog.xaml.cs">
       <DependentUpon>CloseDialog.xaml</DependentUpon>
     </Compile>

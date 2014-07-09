@@ -241,12 +241,4 @@ namespace Simple_File_Sender
             RemainingTime.Content = remainingTime.ToString(@"mm\:ss");
         }
     }
-    public class InterruptedByUserException : Exception
-    {
-        public InterruptedByUserException()
-            : base("Operation was interrupted by user")
-        {
-
-        }
-    }
 }

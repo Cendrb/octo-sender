@@ -82,7 +82,8 @@ namespace Simple_File_Sender
             {
                 StreamReader sr = new StreamReader(new NetworkStream(e.ConnectSocket));
                 string name = sr.ReadLine().Replace("\0", String.Empty);
-                contacts.Add(new NameIPPair(name, ((IPEndPoint)e.RemoteEndPoint).Address));
+                if(name != StaticPenises.RefuseName)
+                    contacts.Add(new NameIPPair(name, ((IPEndPoint)e.RemoteEndPoint).Address));
             }
         }
     }

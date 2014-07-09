@@ -29,9 +29,12 @@
                 </MenuItem>
                 <MenuItem Header="_Tools">
                     <MenuItem x:Name="RefreshButton" Header="Refresh" Click="RefreshButton_Click"/>
-                    <MenuItem x:Name="BasicDataButton" Header="Change basic data..." Click="BasicDataButton_Click"/>
-                    <MenuItem x:Name="FactoryResetButton" Header="Reset to factory settings" Click="FactoryResetButton_Click"/>
+                    <Separator/>
+                    <MenuItem x:Name="BasicDataButton" Header="Change basic configuration..." Click="BasicDataButton_Click"/>
                     <MenuItem x:Name="PreferencesButton" Header="Preferences..." Click="PreferencesButton_Click"/>
+                    <Separator/>
+                    <MenuItem x:Name="ClearBanlistButton" Header="Clear banlist" Click="ClearBanlistButton_Click"/>
+                    <MenuItem x:Name="FactoryResetButton" Header="Reset all settings..." Click="FactoryResetButton_Click"/>
                 </MenuItem>
                 <MenuItem x:Name="HelpButton" Header="_Help" Click="HelpButton_Click"/>
             </Menu>

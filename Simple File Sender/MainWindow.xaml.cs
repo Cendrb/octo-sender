@@ -101,6 +101,7 @@ namespace Simple_File_Sender
 
             receiver = new Receiver(usedPorts, receivingQueue.Items, choosePath, Properties.Settings.Default.UserName);
             receiver.FileReceived += receiver_FileReceived;
+            receiver.BannedIPs = Properties.Settings.Default.BannedIPs;
             receiver.Start();
 
             refresh();
@@ -111,11 +112,13 @@ namespace Simple_File_Sender
             Contact contact = new Contact(c);
             contact.Delete += contact_Delete;
             contact.Saved = saved;
+            contact.Ban += contact_Ban;
+            contact.Pardon += contact_Pardon;
             contact.PingAndView();
             contact.SendFile += sender.SendFile;
+            contact.Banned = Properties.Settings.Default.BannedIPs.Contains(contact.IP.ToString());
             contacts.Items.Add(contact);
         }
-
 
         private void PingAllContacts()
         {
@@ -127,9 +130,10 @@ namespace Simple_File_Sender
 
         private void refresh()
         {
+            receiver.BlindBannedContacts = Properties.Settings.Default.BlindBannedContacts;
             contacts.Items.Clear();
-            AddOnlineContacts();
             AddSavedContacts();
+            AddOnlineContacts();
             PingAllContacts();
         }
 
@@ -141,11 +145,18 @@ namespace Simple_File_Sender
 
         private async void AddOnlineContacts()
         {
+            IPAddress[] IPs = Dns.GetHostAddresses(Dns.GetHostName());
+
             Pinger pinger = new Pinger();
             List<NameIPPair> pingerContacts = await pinger.GetOnlineContacts();
             foreach (NameIPPair c in pingerContacts)
             {
-                AddContactFromPair(c, false);
+                if (!Properties.Settings.Default.ShowLocalClientInContacts && IPs.Contains(c.IP))
+                    Console.WriteLine("Skipping local contact: " + c.ToString());
+                else if (!Properties.Settings.Default.ShowBannedContactsInContacts && Properties.Settings.Default.BannedIPs.Contains(c.IP.ToString()))
+                    Console.WriteLine("Skipping banned contact: " + c.ToString());
+                else
+                    AddContactFromPair(c, false);
             }
         }
 
@@ -198,12 +209,14 @@ namespace Simple_File_Sender
                 dialog.DefaultSavePath = Properties.Settings.Default.DefaultSavePath;
 
             dialog.ShowDialog();
-            if(dialog.Success)
+            if (dialog.Success)
             {
                 Properties.Settings.Default.UserName = dialog.UsernameText.Text;
                 Properties.Settings.Default.DefaultSavePath = dialog.DefaultSavePath;
                 Properties.Settings.Default.UseDefaultSavePath = Directory.Exists(dialog.DefaultSavePath);
                 Properties.Settings.Default.Save();
+
+                receiver.Name = Properties.Settings.Default.UserName;
 
                 Func<string, string> choosePath;
 
@@ -213,17 +226,36 @@ namespace Simple_File_Sender
                     choosePath = choosePathMethod;
 
                 receiver.Path = choosePath;
+
+                refresh();
             }
         }
 
         private void FactoryResetButton_Click(object sender, RoutedEventArgs e)
         {
+            MessageBoxResult result = System.Windows.MessageBox.Show("This will wipe all settings and banlist!\nDo you really want to continue?", "Factory reset", MessageBoxButton.YesNo, MessageBoxImage.Exclamation);
+            if(result == MessageBoxResult.Yes)
+            {
+                Properties.Settings.Default.FirstRun = true;
+                Properties.Settings.Default.Save();
 
+                System.Windows.MessageBox.Show("Restart Octo Sender to perform wipe", "Restart required", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void ClearBanlistButton_Click(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.BannedIPs.Clear();
+            receiver.BannedIPs.Clear();
+            Properties.Settings.Default.Save();
+            refresh();
         }
 
         private void PreferencesButton_Click(object sender, RoutedEventArgs e)
         {
-
+            Preferences prefs = new Preferences();
+            prefs.ShowDialogLoadAndSave();
+            refresh();
         }
 
         private void HelpButton_Click(object sender, RoutedEventArgs e)
@@ -241,6 +273,20 @@ namespace Simple_File_Sender
 
         }
         #endregion
+
+        private void contact_Pardon(Contact contact)
+        {
+            Properties.Settings.Default.BannedIPs.Remove(contact.IP.ToString());
+            Properties.Settings.Default.Save();
+        }
+
+        private void contact_Ban(Contact contact)
+        {
+            Properties.Settings.Default.BannedIPs.Add(contact.IP.ToString());
+            Properties.Settings.Default.Save();
+            if (!Properties.Settings.Default.ShowBannedContactsInContacts)
+                contacts.Items.Remove(contact);
+        }
 
         private void trayIcon_BalloonTipClicked(object sender, EventArgs e)
         {
@@ -292,7 +338,7 @@ namespace Simple_File_Sender
 
         private void OnExit(object sender, EventArgs e)
         {
-            Exit();   
+            Exit();
         }
 
         /// <summary>
