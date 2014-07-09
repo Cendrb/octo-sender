@@ -48,7 +48,7 @@ namespace Simple_File_Sender
             trayIcon.Text = "Octo Sender";
             trayIcon.Visible = true;
             trayIcon.ContextMenu = trayMenu;
-            trayIcon.Icon = new Icon("icon.ico");
+            trayIcon.Icon = new Icon("Resources\\icon.ico");
             trayIcon.MouseClick += trayIcon_MouseClick;
             trayIcon.MouseMove += trayIcon_MouseMove;
             trayIcon.BalloonTipClicked += trayIcon_BalloonTipClicked;
@@ -77,12 +77,16 @@ namespace Simple_File_Sender
                 if (!dialog.Success)
                 {
                     System.Windows.Application.Current.Shutdown();
+                    Thread.Sleep(50000000);
                 }
-                Properties.Settings.Default.UserName = dialog.UsernameText.Text;
-                Properties.Settings.Default.DefaultSavePath = dialog.DefaultSavePath;
-                Properties.Settings.Default.UseDefaultSavePath = Directory.Exists(dialog.DefaultSavePath);
-                Properties.Settings.Default.FirstRun = false;
-                Properties.Settings.Default.Save();
+                else
+                {
+                    Properties.Settings.Default.UserName = dialog.UsernameText.Text;
+                    Properties.Settings.Default.DefaultSavePath = dialog.DefaultSavePath;
+                    Properties.Settings.Default.UseDefaultSavePath = Directory.Exists(dialog.DefaultSavePath);
+                    Properties.Settings.Default.FirstRun = false;
+                    Properties.Settings.Default.Save();
+                }
             }
 
             usedPorts.Add(6969); // Main comm port
@@ -130,11 +134,21 @@ namespace Simple_File_Sender
 
         private void refresh()
         {
+            Refresh.IsEnabled = false;
+            RefreshButton.IsEnabled = false;
+            Refresh.Content = "Refreshing...";
+            RefreshButton.Header = "Refreshing...";
+
             receiver.BlindBannedContacts = Properties.Settings.Default.BlindBannedContacts;
             contacts.Items.Clear();
             AddSavedContacts();
             AddOnlineContacts();
             PingAllContacts();
+
+            Refresh.IsEnabled = true;
+            RefreshButton.IsEnabled = true;
+            Refresh.Content = "Refresh";
+            RefreshButton.Header = "Refresh";
         }
 
         private void AddSavedContacts()
