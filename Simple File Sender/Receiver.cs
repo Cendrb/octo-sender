@@ -13,6 +13,8 @@ namespace Simple_File_Sender
 {
     public class Receiver
     {
+        public event Action<ReceiverTask> FileReceived = delegate { };
+
         List<int> usedPorts;
 
         public ItemCollection tasks { get; private set; }
@@ -21,13 +23,36 @@ namespace Simple_File_Sender
 
         public bool Running { get; private set; }
 
+        public int RunningTasks
+        {
+            get
+            {
+                int counter = 0;
+                foreach (object o in tasks)
+                {
+                    ReceiverTask task = o as ReceiverTask;
+                    if (task.Running)
+                        counter++;
+                }
+                return counter;
+            }
+        }
+
+        public int TotalTasks
+        {
+            get
+            {
+                return tasks.Count;
+            }
+        }
+
         TcpListener namePingerListener = new TcpListener(IPAddress.Any, StaticPenises.NamePingPort);
         TcpListener pingerListener = new TcpListener(IPAddress.Any, StaticPenises.PingPort);
         TcpListener portCommListener = new TcpListener(IPAddress.Any, StaticPenises.MainPort);
 
-        public static string Path { get; set; }
+        public Func<string, string> Path { get; set; }
 
-        public Receiver(List<int> usedPorts, ItemCollection collection, string path, string name)
+        public Receiver(List<int> usedPorts, ItemCollection collection, Func<string, string> path, string name)
         {
             Name = name;
             this.usedPorts = usedPorts;
@@ -70,6 +95,15 @@ namespace Simple_File_Sender
             }
             else
                 Console.WriteLine("Receiver not running");
+        }
+
+        public void StopAllTasks()
+        {
+            foreach (object o in tasks)
+            {
+                ReceiverTask task = o as ReceiverTask;
+                task.Stop();
+            }
         }
 
         private void NamePingerStart()
@@ -195,7 +229,7 @@ namespace Simple_File_Sender
 
         private void StartNewTask(IPAddress endPoint, int receivedPort)
         {
-            ReceiverTask task = new ReceiverTask(endPoint, receivedPort);
+            ReceiverTask task = new ReceiverTask(endPoint, receivedPort, Path);
             tasks.Dispatcher.Invoke(() => tasks.Add(task));
             task.Delete += task_Delete;
             task.Completed += task_Completed;
@@ -204,12 +238,14 @@ namespace Simple_File_Sender
 
         private void task_Completed(ReceiverTask task)
         {
-            tasks.Dispatcher.Invoke(() => usedPorts.Remove(task.Port));
+            tasks.Dispatcher.Invoke(() => FileReceived(task));
+            usedPorts.Remove(task.Port);
         }
 
         private void task_Delete(ReceiverTask task)
         {
             tasks.Dispatcher.Invoke(() => tasks.Remove(task));
+            usedPorts.Remove(task.Port);
         }
     }
 }

@@ -12,9 +12,7 @@ namespace Simple_File_Sender
 {
     public class DataLoader
     {
-        public string Name { get; set; }
         public List<NameIPPair> Contacts { get; private set; }
-        public string Path { get; set; }
         string path;
 
         public DataLoader()
@@ -38,8 +36,8 @@ namespace Simple_File_Sender
             XmlElement settings = document.CreateElement("Settings");
             XmlElement contacts = document.CreateElement("Contacts");
 
-            settings.SetAttribute("Name", Name);
-            settings.SetAttribute("Path", Path);
+            //settings.SetAttribute("Name", Name);
+            //settings.SetAttribute("Path", Path);
 
             main.AppendChild(settings);
 
@@ -69,8 +67,8 @@ namespace Simple_File_Sender
                 XmlElement settings = (XmlElement)main.GetElementsByTagName("Settings")[0];
                 XmlElement contacts = (XmlElement)main.GetElementsByTagName("Contacts")[0];
 
-                Name = settings.GetAttribute("Name");
-                Path = settings.GetAttribute("Path");
+                //Name = settings.GetAttribute("Name");
+                //Path = settings.GetAttribute("Path");
 
                 foreach(XmlNode node in contacts.ChildNodes)
                 {

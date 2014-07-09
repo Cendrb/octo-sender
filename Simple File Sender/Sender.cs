@@ -14,11 +14,36 @@ namespace Simple_File_Sender
 {
     public class Sender
     {
+        public event Action<SenderTask> FileSent = delegate { };
+
         List<int> usedPorts;
 
         private ItemCollection tasks;
 
         TcpClient portSocket;
+
+        public int RunningTasks
+        {
+            get
+            {
+                int counter = 0;
+                foreach (object o in tasks)
+                {
+                    SenderTask task = o as SenderTask;
+                    if (task.Running)
+                        counter++;
+                }
+                return counter;
+            }
+        }
+
+        public int TotalTasks
+        {
+            get
+            {
+                return tasks.Count;
+            }
+        }
 
         public string Name { get; set; }
 
@@ -29,42 +54,59 @@ namespace Simple_File_Sender
             this.Name = name;
         }
 
-        public void SendFile(Contact contact, string file)
+        public async void SendFile(Contact contact, string file)
         {
-            //Thread thread = new Thread(() => sendFile(contact, file));
-            //thread.SetApartmentState(ApartmentState.STA);
-            //thread.Start();
-            sendFile(contact, file);
+            if (await contact.Ping() > -1)
+            {
+                sendFile(contact, file);
+            }
+            else
+            {
+                MessageBox.Show("Selected contact seems to be offline (cannot be pinged)\nFile cannot be send", "Failed to ping", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async void sendFile(Contact contact, string file)
         {
-            if (await contact.Ping() > -1)
+            int port = await GetFreePortWith(contact.IP);
+            SenderTask task;
+            task = new SenderTask(file, new IPEndPoint(contact.IP, port), contact, Name);
+            task.Delete += task_Delete;
+            task.Completed += task_Completed;
+            usedPorts.Add(port);
+            tasks.Dispatcher.Invoke(() => tasks.Add(task));
+            task.Start();
+        }
+
+        public void StopAllTasks()
+        {
+            foreach (object o in tasks)
             {
-                int port = GetFreePortWith(contact.IP);
-                SenderTask task;
-                task = new SenderTask(file, new IPEndPoint(contact.IP, port), contact, Name);
-                task.Delete += task_Delete;
-                task.Completed += task_Completed;
-                usedPorts.Add(port);
-                tasks.Dispatcher.Invoke(() => tasks.Add(task));
-                task.Start();
+                SenderTask task = o as SenderTask;
+                task.Stop();
             }
-            else
-                MessageBox.Show("NEsmysl špatně!");
         }
 
         private void task_Completed(SenderTask task)
         {
+            tasks.Dispatcher.Invoke(() => FileSent(task));
             usedPorts.Remove(task.Target.Port);
         }
 
         private void task_Delete(SenderTask task)
         {
+            usedPorts.Remove(task.Target.Port);
             tasks.Dispatcher.Invoke(() => tasks.Remove(task));
         }
 
-        private int GetFreePortWith(IPAddress address)
+        private Task<int> GetFreePortWith(IPAddress address)
+        {
+            Task<int> task = new Task<int>(() => getFreePortWith(address));
+            task.Start();
+            return task;
+        }
+
+        private int getFreePortWith(IPAddress address)
         {
             portSocket = new TcpClient();
             portSocket.Connect(address, 6969);
@@ -102,9 +144,9 @@ namespace Simple_File_Sender
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
-
+                Console.WriteLine(e.Message);
             }
             finally
             {

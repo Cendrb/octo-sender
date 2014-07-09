@@ -80,6 +80,7 @@ namespace Simple_File_Sender
         {
             this.Pair = pair;
             InitializeComponent();
+            Saved = false;
             ContactName = pair.Name;
             IP = pair.IP;
             DataContext = this;

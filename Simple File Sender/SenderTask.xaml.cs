@@ -100,7 +100,7 @@ namespace Simple_File_Sender
                 {
                     Client.Connect(Target.Address, Target.Port);
                 }
-                catch(SocketException e)
+                catch (SocketException e)
                 {
                     status("Failed to connect to client");
                     Console.WriteLine(e.Message);
@@ -114,7 +114,7 @@ namespace Simple_File_Sender
                 Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = true));
 
                 FileStream stream = File.OpenRead(SourceFile.FullName);
-                
+
                 status("Sending data...");
 
                 Stopwatch totalWatch = Stopwatch.StartNew();
@@ -158,7 +158,7 @@ namespace Simple_File_Sender
             }
             catch (SocketException e)
             {
-                status("Failed to send file");
+                status("Sending was refused by opposite side");
                 Console.WriteLine(e.Message);
                 Running = false;
             }
@@ -172,7 +172,7 @@ namespace Simple_File_Sender
                 Stop();
                 Client.Close();
                 Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = true));
-                if(Done)
+                if (Done)
                     Dispatcher.BeginInvoke(new Action(() => StartButton.IsEnabled = false));
             }
         }
@@ -200,7 +200,6 @@ namespace Simple_File_Sender
 
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
-            Completed(this);
             Delete(this);
         }
 

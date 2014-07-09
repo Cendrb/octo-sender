@@ -1,11 +1,18 @@
 ﻿<Window x:Class="Simple_File_Sender.BasicInfoDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Enter your username" Height="77" Width="503">
+        Title="Basic configuration" Height="191" Width="503" ResizeMode="NoResize">
     <Grid>
         <Label Content="Username" HorizontalAlignment="Left" Margin="10,10,0,0" Height="28" VerticalAlignment="Top"/>
-        <TextBox x:Name="UsernameText" HorizontalAlignment="Left" Margin="89,10,0,0" TextWrapping="Wrap" Width="262" Height="25" VerticalAlignment="Top"/>
-        <Button x:Name="SaveButt" Content="SAVE" Margin="356,10,10,0" Height="25" VerticalAlignment="Top" Click="SaveButt_Click"/>
+        <TextBox x:Name="UsernameText" Margin="89,10,10,0" TextWrapping="Wrap" Height="25" VerticalAlignment="Top" ToolTip="Your username will be shown to other Octo Sender users"/>
+        <Button x:Name="SaveButt" Content="SAVE" Margin="10,121,253,10" Click="SaveButt_Click" ToolTip="Everything could be changed later"/>
+        <CheckBox x:Name="AskCheckbox" Content="Ask on every incoming file" HorizontalAlignment="Left" Margin="10,69,0,0" VerticalAlignment="Top" Checked="AskCheckbox_Checked" Unchecked="AskCheckbox_Unchecked"/>
+        <Label Content="Received files options" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,41,0,0"/>
+        <Label Content="- OR -" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="224,63,0,0"/>
+        <Button x:Name="DefaultButton" Content="Select default save path..." VerticalAlignment="Top" Margin="323,64,10,0" Click="DefaultButton_Click"/>
+        <Label Content="Choosen path:" HorizontalAlignment="Left" Margin="10,90,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="PathTextBlock" Margin="99,95,10,0" TextWrapping="Wrap" Text="None" VerticalAlignment="Top"/>
+        <Button x:Name="CancelButt" Content="CANCEL" Margin="253,121,10,10" Click="CancelButt_Click" ToolTip="Discard changes"/>
 
     </Grid>
 </Window>

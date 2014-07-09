@@ -19,6 +19,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Forms;
 using System.Drawing;
+using System.IO;
 
 namespace Simple_File_Sender
 {
@@ -49,55 +50,108 @@ namespace Simple_File_Sender
             trayIcon.ContextMenu = trayMenu;
             trayIcon.Icon = new Icon("icon.ico");
             trayIcon.MouseClick += trayIcon_MouseClick;
+            trayIcon.MouseMove += trayIcon_MouseMove;
+            trayIcon.BalloonTipClicked += trayIcon_BalloonTipClicked;
 
             StaticPenises.Initialize();
 
+            // Loading saved contacts
             dataLoader = new DataLoader();
 
             if (!dataLoader.ReadData())
             {
-                BasicInfoDialog dialog = new BasicInfoDialog();
-                while (!dialog.Success)
-                {
-                    dialog.ShowDialog();
-                }
-                dataLoader.Name = dialog.UsernameText.Text;
-                System.Windows.Forms.FolderBrowserDialog penis = new System.Windows.Forms.FolderBrowserDialog();
-                while (penis.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-                {
-
-                }
-                dataLoader.Path = penis.SelectedPath;
                 dataLoader.SaveData();
+            }
+
+            // Loading settings
+            if (Properties.Settings.Default.FirstRun)
+            {
+                // First run setup
+                Properties.Settings.Default.Reset();
+
+                // TODO Add welcome window
+
+                // Basic info
+                BasicInfoDialog dialog = new BasicInfoDialog();
+                dialog.ShowDialog();
+                if (!dialog.Success)
+                {
+                    System.Windows.Application.Current.Shutdown();
+                }
+                Properties.Settings.Default.UserName = dialog.UsernameText.Text;
+                Properties.Settings.Default.DefaultSavePath = dialog.DefaultSavePath;
+                Properties.Settings.Default.UseDefaultSavePath = Directory.Exists(dialog.DefaultSavePath);
+                Properties.Settings.Default.FirstRun = false;
+                Properties.Settings.Default.Save();
             }
 
             usedPorts.Add(6969); // Main comm port
             usedPorts.Add(6967); // Name ping port (Pinger class)
             usedPorts.Add(6968); // Ping port (Receiver class)
 
-            sender = new Sender(usedPorts, sendingQueue.Items, dataLoader.Name);
+            sender = new Sender(usedPorts, sendingQueue.Items, Properties.Settings.Default.UserName);
+            sender.FileSent += sender_FileSent;
 
-            receiver = new Receiver(usedPorts, receivingQueue.Items, dataLoader.Path, dataLoader.Name);
+            Func<string, string> choosePath;
+
+            if (Properties.Settings.Default.UseDefaultSavePath)
+                choosePath = (x) => Properties.Settings.Default.DefaultSavePath;
+            else
+                choosePath = choosePathMethod;
+
+            receiver = new Receiver(usedPorts, receivingQueue.Items, choosePath, Properties.Settings.Default.UserName);
+            receiver.FileReceived += receiver_FileReceived;
             receiver.Start();
 
             refresh();
         }
 
-        private void trayIcon_MouseClick(object sender, System.Windows.Forms.MouseEventArgs e)
+        private void AddContactFromPair(NameIPPair c, bool saved)
         {
-            Visibility = System.Windows.Visibility.Visible;
+            Contact contact = new Contact(c);
+            contact.Delete += contact_Delete;
+            contact.Saved = saved;
+            contact.PingAndView();
+            contact.SendFile += sender.SendFile;
+            contacts.Items.Add(contact);
         }
 
-        private void OnExit(object sender, EventArgs e)
+
+        private void PingAllContacts()
         {
-            System.Windows.Application.Current.Shutdown();
+            foreach (Contact contact in contacts.Items)
+            {
+                contact.PingAndView();
+            }
         }
 
-        private void Window_Closed(object sender, EventArgs e)
+        private void refresh()
         {
-            receiver.Stop();
-            System.Windows.Application.Current.Shutdown();
+            contacts.Items.Clear();
+            AddOnlineContacts();
+            AddSavedContacts();
+            PingAllContacts();
         }
+
+        private void AddSavedContacts()
+        {
+            foreach (NameIPPair pair in dataLoader.Contacts)
+                AddContactFromPair(pair, true);
+        }
+
+        private async void AddOnlineContacts()
+        {
+            Pinger pinger = new Pinger();
+            List<NameIPPair> pingerContacts = await pinger.GetOnlineContacts();
+            foreach (NameIPPair c in pingerContacts)
+            {
+                AddContactFromPair(c, false);
+            }
+        }
+
+        #region Event Handlers
+
+        #region Buttons
 
         private void AddContact_Click(object penis, RoutedEventArgs e)
         {
@@ -111,14 +165,102 @@ namespace Simple_File_Sender
             }
         }
 
-        private void AddContactFromPair(NameIPPair c, bool saved)
+        private void Refresh_Click(object sender, RoutedEventArgs e)
         {
-            Contact contact = new Contact(c);
-            contact.Delete += contact_Delete;
-            contact.Saved = saved;
-            contact.PingAndView();
-            contact.SendFile += sender.SendFile;
-            contacts.Items.Add(contact);
+            refresh();
+        }
+
+        #endregion
+
+        #region Menu
+        private void NewContactButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddContact_Click(sender, e);
+        }
+
+        private void ExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            Exit();
+        }
+
+        private void RefreshButton_Click(object sender, RoutedEventArgs e)
+        {
+            refresh();
+        }
+
+        private void BasicDataButton_Click(object sender, RoutedEventArgs e)
+        {
+            BasicInfoDialog dialog = new BasicInfoDialog();
+
+            dialog.UsernameText.Text = Properties.Settings.Default.UserName;
+            dialog.AskCheckbox.IsChecked = !Properties.Settings.Default.UseDefaultSavePath;
+            if (Properties.Settings.Default.DefaultSavePath != String.Empty)
+                dialog.DefaultSavePath = Properties.Settings.Default.DefaultSavePath;
+
+            dialog.ShowDialog();
+            if(dialog.Success)
+            {
+                Properties.Settings.Default.UserName = dialog.UsernameText.Text;
+                Properties.Settings.Default.DefaultSavePath = dialog.DefaultSavePath;
+                Properties.Settings.Default.UseDefaultSavePath = Directory.Exists(dialog.DefaultSavePath);
+                Properties.Settings.Default.Save();
+
+                Func<string, string> choosePath;
+
+                if (Properties.Settings.Default.UseDefaultSavePath)
+                    choosePath = (x) => Properties.Settings.Default.DefaultSavePath;
+                else
+                    choosePath = choosePathMethod;
+
+                receiver.Path = choosePath;
+            }
+        }
+
+        private void FactoryResetButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void PreferencesButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void HelpButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void BackupButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void RestoreButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+        #endregion
+
+        private void trayIcon_BalloonTipClicked(object sender, EventArgs e)
+        {
+            Console.WriteLine(sender.ToString());
+            Visibility = System.Windows.Visibility.Visible;
+        }
+
+        private void receiver_FileReceived(ReceiverTask task)
+        {
+            trayIcon.ShowBalloonTip(3000, "Octo Sender", task.ReceivedFileName + " received from " + task.SenderName, ToolTipIcon.Info);
+        }
+
+        private void sender_FileSent(SenderTask task)
+        {
+            trayIcon.ShowBalloonTip(3000, "Octo Sender", task.SourceFile.Name + " sent to " + task.TargetContact.ContactName, ToolTipIcon.Info);
+        }
+
+        private void trayIcon_MouseMove(object penis, System.Windows.Forms.MouseEventArgs e)
+        {
+            trayIcon.Text = String.Format("Octo Sender\nReceiver tasks: {0}\nSender tasks: {1}", receiver.RunningTasks, sender.RunningTasks);
         }
 
         private void contact_Delete(Contact obj)
@@ -128,47 +270,10 @@ namespace Simple_File_Sender
             contacts.Items.Remove(obj);
         }
 
-        private void PingAllContacts()
-        {
-            foreach (Contact contact in contacts.Items)
-            {
-                contact.PingAndView();
-            }
-        }
-
-        private void Refresh_Click(object sender, RoutedEventArgs e)
-        {
-            refresh();
-        }
-
-        private void refresh()
-        {
-            contacts.Items.Clear();
-            addOnlineContacts();
-            addSavedContacts();
-            PingAllContacts();
-        }
-
-        private void addSavedContacts()
-        {
-            foreach (NameIPPair pair in dataLoader.Contacts)
-                AddContactFromPair(pair, true);
-        }
-
-        private async void addOnlineContacts()
-        {
-            Pinger pinger = new Pinger();
-            List<NameIPPair> pingerContacts = await pinger.GetOnlineContacts();
-            foreach (NameIPPair c in pingerContacts)
-            {
-                AddContactFromPair(c, false);
-            }
-        }
-
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             CloseDialogResult result = new CloseDialog().ShowCloseDialog();
-            switch(result)
+            switch (result)
             {
                 case CloseDialogResult.Minimize:
                     e.Cancel = true;
@@ -177,9 +282,67 @@ namespace Simple_File_Sender
                 case CloseDialogResult.Back:
                     e.Cancel = true;
                     break;
+                case CloseDialogResult.Exit:
+                    e.Cancel = true;
+                    Exit();
+                    break;
             }
-            
+
         }
 
+        private void OnExit(object sender, EventArgs e)
+        {
+            Exit();   
+        }
+
+        /// <summary>
+        /// Tell user about possible running tasks
+        /// </summary>
+        private void Exit()
+        {
+            if (receiver.RunningTasks > 0 || sender.RunningTasks > 0)
+            {
+                DialogResult result = System.Windows.Forms.MessageBox.Show(String.Format("Total of {0} tasks is in progress.\nReceiver tasks: {1}\nSender tasks: {2}\nClosing will abort all running tasks.\nDo you want to close Octo Sender?", receiver.RunningTasks + sender.RunningTasks, receiver.RunningTasks, sender.RunningTasks), "Tasks not completed", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
+                if (result == System.Windows.Forms.DialogResult.Yes)
+                    Shutdown();
+            }
+            else
+            {
+                Shutdown();
+            }
+        }
+        /// <summary>
+        /// Force shutdown
+        /// </summary>
+        private void Shutdown()
+        {
+            receiver.StopAllTasks();
+            sender.StopAllTasks();
+            receiver.Stop();
+            System.Windows.Application.Current.Shutdown();
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            Exit();
+        }
+
+        private void trayIcon_MouseClick(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            Visibility = System.Windows.Visibility.Visible;
+        }
+
+        private string choosePathMethod(string message)
+        {
+            System.Windows.Forms.FolderBrowserDialog folderDialog = new System.Windows.Forms.FolderBrowserDialog();
+            folderDialog.Description = message;
+            folderDialog.ShowDialog();
+            if (Directory.Exists(folderDialog.SelectedPath))
+                return folderDialog.SelectedPath;
+            else
+                return String.Empty;
+        }
+
+        #endregion
     }
 }

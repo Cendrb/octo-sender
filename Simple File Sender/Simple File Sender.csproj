@@ -87,6 +87,10 @@
     <Compile Include="Helpers.cs" />
     <Compile Include="NameIPPair.cs" />
     <Compile Include="Pinger.cs" />
+    <Compile Include="Preferences.xaml.cs">
+      <DependentUpon>Preferences.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Settings.cs" />
     <Compile Include="StaticPenises.cs" />
     <Compile Include="Receiver.cs" />
     <Compile Include="ReceiverTask.xaml.cs">
@@ -124,6 +128,10 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="Preferences.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="ReceiverTask.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

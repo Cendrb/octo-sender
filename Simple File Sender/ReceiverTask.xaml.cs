@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -34,13 +35,17 @@ namespace Simple_File_Sender
             set
             {
                 running = value;
-                Dispatcher.Invoke(new Action(() => StartButton.IsEnabled = !Running));
-                Dispatcher.Invoke(new Action(() => StopButton.IsEnabled = Running));
+                Dispatcher.BeginInvoke(new Action(() => StartButton.IsEnabled = !Running));
+                Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = Running));
             }
         }
 
         public IPAddress Address { get; private set; }
         public int Port { get; private set; }
+        public Func<string, string> SavePath { get; private set; }
+
+        public string SenderName { get; private set; }
+        public string ReceivedFileName { get; private set; }
 
         public bool Done { get; private set; }
 
@@ -49,23 +54,26 @@ namespace Simple_File_Sender
 
         private TcpListener listener;
 
-        public ReceiverTask(IPAddress address, int port)
+        public ReceiverTask(IPAddress address, int port, Func<string, string> savePath)
         {
             InitializeComponent();
             Address = address;
             Port = port;
             Done = false;
+            SavePath = savePath;
         }
 
         public void Start()
         {
-            Task.Factory.StartNew(start);
+            Thread thread = new Thread(new ThreadStart(start));
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
         }
 
         private void start()
         {
-            Dispatcher.Invoke(new Action(() => StopButton.IsEnabled = false));
-            Dispatcher.Invoke(new Action(() => DeleteButton.IsEnabled = false));
+            Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = false));
+            Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = false));
 
             Running = true;
 
@@ -87,61 +95,75 @@ namespace Simple_File_Sender
             client.Client.Receive(hostNameBuffer);
             string hostName = Helpers.GetString(hostNameBuffer).Replace("\0", String.Empty);
 
-            Dispatcher.Invoke(() => setBasicLabels(name, hostName, (IPEndPoint)client.Client.LocalEndPoint));
+            SenderName = hostName;
+            ReceivedFileName = name;
+
+            Thread.CurrentThread.Name = String.Format("ReceiverTask Thread receiving {0} from {1}", name, hostName);
+
+            Dispatcher.BeginInvoke(new Action(() => setBasicLabels(name, hostName, (IPEndPoint)client.Client.LocalEndPoint)));
+
+            Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = true));
 
             NetworkStream stream = client.GetStream();
-            FileStream file = new FileStream(Path.Combine(Receiver.Path, name), FileMode.Create, FileAccess.Write, FileShare.Write);
 
-            Dispatcher.Invoke(new Action(() => StopButton.IsEnabled = true));
+            string path = getSavePath(name, hostName);
 
             try
             {
-                Stopwatch totalWatch = Stopwatch.StartNew();
-                Stopwatch secondWatch = Stopwatch.StartNew();
+                if (path == String.Empty)
+                    throw new InterruptedByUserException();
 
-                status("Receiving data...");
-                int recBytes;
-                byte[] recData = new byte[65536];
-                long totalRecBytes = 0;
-                while ((recBytes = stream.Read(recData, 0, recData.Length)) > 0)
+                using (FileStream file = new FileStream(Path.Combine(path, name), FileMode.Create, FileAccess.Write, FileShare.Write))
                 {
-                    totalRecBytes += recBytes;
-                    if (totalRecBytes > size)
+
+                    Stopwatch totalWatch = Stopwatch.StartNew();
+                    Stopwatch secondWatch = Stopwatch.StartNew();
+
+                    status("Receiving data...");
+                    int recBytes;
+                    byte[] recData = new byte[65536];
+                    long totalRecBytes = 0;
+                    while ((recBytes = stream.Read(recData, 0, recData.Length)) > 0)
                     {
-                        recBytes -= (int)(totalRecBytes - size);
-                        totalRecBytes = size;
+                        totalRecBytes += recBytes;
+                        if (totalRecBytes > size)
+                        {
+                            recBytes -= (int)(totalRecBytes - size);
+                            totalRecBytes = size;
+                        }
+
+                        if (BitConverter.ToInt32(recData, 0) == 69)
+                            break;
+
+                        file.Write(recData, 0, recBytes);
+
+                        if (!Running)
+                            throw new InterruptedByUserException();
+
+                        Dispatcher.Invoke(() => updateProgress(totalRecBytes, size));
+                        if (secondWatch.ElapsedMilliseconds > 1000)
+                        {
+                            secondWatch.Restart();
+                            Dispatcher.Invoke(() => updateSpeedAndTime(totalWatch.Elapsed, totalRecBytes, size));
+                        }
                     }
-
-                    if (BitConverter.ToInt32(recData, 0) == 69)
-                        break;
-
-                    file.Write(recData, 0, recBytes);
-
-                    if (!Running)
-                        throw new InterruptedByUserException();
-
-                    Dispatcher.Invoke(() => updateProgress(totalRecBytes, size));
-                    if (secondWatch.ElapsedMilliseconds > 1000)
-                    {
-                        secondWatch.Restart();
-                        Dispatcher.Invoke(() => updateSpeedAndTime(totalWatch.Elapsed, totalRecBytes, size));
-                    }
+                    totalWatch.Stop();
+                    secondWatch.Stop();
                 }
-                totalWatch.Stop();
-                secondWatch.Stop();
-                file.Close();
 
                 status("Receiving MD5 sum...");
                 byte[] md5 = new byte[16];
                 client.Client.Receive(md5);
 
                 status("Validating file using MD5 sum...");
-                file = File.OpenRead(Path.Combine(Receiver.Path, name));
-                using (MD5 outMD5 = MD5.Create())
+                using (FileStream file = File.OpenRead(Path.Combine(path, name)))
                 {
-                    byte[] hash = outMD5.ComputeHash(file);
-                    if (!Enumerable.SequenceEqual(md5, hash))
-                        throw new InvalidOperationException("File is damaged and probably could not be opened");
+                    using (MD5 outMD5 = MD5.Create())
+                    {
+                        byte[] hash = outMD5.ComputeHash(file);
+                        if (!Enumerable.SequenceEqual(md5, hash))
+                            throw new InvalidOperationException("File is damaged and probably could not be opened");
+                    }
                 }
 
                 Completed(this);
@@ -164,14 +186,18 @@ namespace Simple_File_Sender
             }
             finally
             {
-                file.Close();
                 stream.Close();
                 client.Close();
                 Stop();
-                Dispatcher.Invoke(new Action(() => DeleteButton.IsEnabled = true));
+                Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = true));
                 if(Done)
-                    Dispatcher.Invoke(new Action(() => StartButton.IsEnabled = false)); 
+                    Dispatcher.BeginInvoke(new Action(() => StartButton.IsEnabled = false)); 
             }
+        }
+
+        private string getSavePath(string filename, string sender)
+        {
+            return SavePath(String.Format("Choose where do you want to save {0} from {1}", filename, sender));
         }
 
         private void updateProgress(long sentBytes, long totalBytes)
@@ -214,7 +240,6 @@ namespace Simple_File_Sender
 
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
-            Completed(this);
             Delete(this);
         }
 
@@ -231,7 +256,7 @@ namespace Simple_File_Sender
 
         private void status(string text)
         {
-            Dispatcher.Invoke(new Action(() => Status.Content = text));
+            Dispatcher.BeginInvoke(new Action(() => Status.Content = text));
         }
 
         public void Stop()
