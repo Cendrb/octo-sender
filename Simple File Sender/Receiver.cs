@@ -131,6 +131,7 @@ namespace Simple_File_Sender
                             client.Client.Send(Helpers.GetBytes(StaticPenises.BannedRefuseName, sizeof(char) * 128));
                         else
                             client.Client.Send(Helpers.GetBytes(Name, sizeof(char) * 128));
+                        Thread.Sleep(100);
                         client.Close();
                     }
                 }

@@ -84,12 +84,20 @@ namespace Simple_File_Sender
 
         private void e_Completed(object sender, SocketAsyncEventArgs e)
         {
-            if (e.ConnectSocket != null)
+            if (e.ConnectSocket != null && e.ConnectSocket.Connected)
             {
-                StreamReader sr = new StreamReader(new NetworkStream(e.ConnectSocket));
-                string name = sr.ReadLine().Replace("\0", String.Empty);
-                if(name != StaticPenises.BannedRefuseName)
-                    contacts.Add(new NameIPPair(name, ((IPEndPoint)e.RemoteEndPoint).Address));
+                try
+                {
+                    byte[] nameBuffer = new byte[sizeof(char) * 128];
+                    e.ConnectSocket.Receive(nameBuffer);
+                    string name = Helpers.GetString(nameBuffer).Replace("\0", String.Empty);
+                    if (name != StaticPenises.BannedRefuseName)
+                        contacts.Add(new NameIPPair(name, ((IPEndPoint)e.RemoteEndPoint).Address));
+                }
+                catch(IOException exception)
+                {
+                    Console.WriteLine(exception.Message);
+                }
             }
         }
     }
