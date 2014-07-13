@@ -16,7 +16,7 @@ namespace Simple_File_Sender
     public class Pinger
     {
         EventWaitHandle pingingHandle = new AutoResetEvent(false);
-        System.Timers.Timer timer = new System.Timers.Timer(1000);
+        System.Timers.Timer timer = new System.Timers.Timer();
         List<SocketAsyncEventArgs> list = new List<SocketAsyncEventArgs>();
         IPAddress[] IPs;
         List<NameIPPair> contacts = new List<NameIPPair>();
@@ -37,8 +37,14 @@ namespace Simple_File_Sender
             }
         }
 
-        public Task<List<NameIPPair>> GetOnlineContacts()
+        /// <summary>
+        /// Scans all local network adapters and returns active clients
+        /// </summary>
+        /// <param name="timeout">Timeout in miliseconds</param>
+        /// <returns>List of all found active clients</returns>
+        public Task<List<NameIPPair>> GetOnlineContacts(double timeout)
         {
+            timer.Interval = timeout;
             Task<List<NameIPPair>> task = new Task<List<NameIPPair>>(new Func<List<NameIPPair>>(getOnlineContacts));
             task.Start();
             return task;
@@ -82,7 +88,7 @@ namespace Simple_File_Sender
             {
                 StreamReader sr = new StreamReader(new NetworkStream(e.ConnectSocket));
                 string name = sr.ReadLine().Replace("\0", String.Empty);
-                if(name != StaticPenises.RefuseName)
+                if(name != StaticPenises.BannedRefuseName)
                     contacts.Add(new NameIPPair(name, ((IPEndPoint)e.RemoteEndPoint).Address));
             }
         }

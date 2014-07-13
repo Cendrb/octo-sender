@@ -26,18 +26,44 @@ namespace Simple_File_Sender
 
         public void ShowDialogLoadAndSave()
         {
+            FilesFromNonContacts mode = (FilesFromNonContacts)Enum.Parse(typeof(FilesFromNonContacts), Properties.Settings.Default.FilesFromNonContacts);
+            switch(mode)
+            {
+                case FilesFromNonContacts.ask:
+                    AskRadio.IsChecked = true;
+                    break;
+                case FilesFromNonContacts.accept:
+                    AcceptRadio.IsChecked = true;
+                    break;
+                case FilesFromNonContacts.reject:
+                    RejectRadio.IsChecked = true;
+                    break;
+            }
+            AskBeforeReceivingButton.IsChecked = Properties.Settings.Default.AskBeforeReceivingFile;
             ShowBlockedContactsButton.IsChecked = Properties.Settings.Default.ShowBannedContactsInContacts;
             ShowLocalClientButton.IsChecked = Properties.Settings.Default.ShowLocalClientInContacts;
             BlindBannedContactsButton.IsChecked = Properties.Settings.Default.BlindBannedContacts;
+            VerifyMD5Button.IsChecked = Properties.Settings.Default.VerifyMD5;
 
             ShowDialog();
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            FilesFromNonContacts mode;
+            if (AskRadio.IsChecked.Value)
+                mode = FilesFromNonContacts.ask;
+            else if (AcceptRadio.IsChecked.Value)
+                mode = FilesFromNonContacts.accept;
+            else
+                mode = FilesFromNonContacts.reject;
+
+            Properties.Settings.Default.AskBeforeReceivingFile = AskBeforeReceivingButton.IsChecked.Value;
+            Properties.Settings.Default.FilesFromNonContacts = mode.ToString();
             Properties.Settings.Default.ShowBannedContactsInContacts = ShowBlockedContactsButton.IsChecked.Value;
             Properties.Settings.Default.ShowLocalClientInContacts = ShowLocalClientButton.IsChecked.Value;
             Properties.Settings.Default.BlindBannedContacts = BlindBannedContactsButton.IsChecked.Value;
+            Properties.Settings.Default.VerifyMD5 = VerifyMD5Button.IsChecked.Value;
             Properties.Settings.Default.Save();
 
             Close();

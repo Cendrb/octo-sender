@@ -30,11 +30,11 @@ namespace Simple_File_Sender
     {
         Sender sender;
         Receiver receiver;
+        // Loads contacts
         DataLoader dataLoader;
         List<int> usedPorts = new List<int>();
-
-        private NotifyIcon trayIcon;
-        private System.Windows.Forms.ContextMenu trayMenu;
+        NotifyIcon trayIcon;
+        System.Windows.Forms.ContextMenu trayMenu;
 
         public MainWindow()
         {
@@ -43,7 +43,6 @@ namespace Simple_File_Sender
             // Tray icon
             trayMenu = new System.Windows.Forms.ContextMenu();
             trayMenu.MenuItems.Add("Exit", OnExit);
-
             trayIcon = new NotifyIcon();
             trayIcon.Text = "Octo Sender";
             trayIcon.Visible = true;
@@ -53,11 +52,12 @@ namespace Simple_File_Sender
             trayIcon.MouseMove += trayIcon_MouseMove;
             trayIcon.BalloonTipClicked += trayIcon_BalloonTipClicked;
 
+
+            // Static properties
             StaticPenises.Initialize();
 
             // Loading saved contacts
             dataLoader = new DataLoader();
-
             if (!dataLoader.ReadData())
             {
                 dataLoader.SaveData();
@@ -76,11 +76,13 @@ namespace Simple_File_Sender
                 dialog.ShowDialog();
                 if (!dialog.Success)
                 {
+                    // Shutdown application if window was closed
                     System.Windows.Application.Current.Shutdown();
                     Thread.Sleep(50000000);
                 }
                 else
                 {
+                    // Save settings
                     Properties.Settings.Default.UserName = dialog.UsernameText.Text;
                     Properties.Settings.Default.DefaultSavePath = dialog.DefaultSavePath;
                     Properties.Settings.Default.UseDefaultSavePath = Directory.Exists(dialog.DefaultSavePath);
@@ -89,26 +91,24 @@ namespace Simple_File_Sender
                 }
             }
 
-            usedPorts.Add(6969); // Main comm port
-            usedPorts.Add(6967); // Name ping port (Pinger class)
-            usedPorts.Add(6968); // Ping port (Receiver class)
-
+            // Initialize sender
             sender = new Sender(usedPorts, sendingQueue.Items, Properties.Settings.Default.UserName);
             sender.FileSent += sender_FileSent;
 
+            // Default path or ask everytime
             Func<string, string> choosePath;
-
             if (Properties.Settings.Default.UseDefaultSavePath)
                 choosePath = (x) => Properties.Settings.Default.DefaultSavePath;
             else
                 choosePath = choosePathMethod;
 
-            receiver = new Receiver(usedPorts, receivingQueue.Items, choosePath, Properties.Settings.Default.UserName);
+            // Initialize receiver
+            receiver = new Receiver(usedPorts, receivingQueue.Items, contacts.Items, choosePath, Properties.Settings.Default.UserName);
             receiver.FileReceived += receiver_FileReceived;
             receiver.BannedIPs = Properties.Settings.Default.BannedIPs;
-            receiver.Start();
+            receiver.Start(); // Starts listeners
 
-            refresh();
+            refresh(); // Adds contacts and tasks
         }
 
         private void AddContactFromPair(NameIPPair c, bool saved)
@@ -132,37 +132,58 @@ namespace Simple_File_Sender
             }
         }
 
+        /// <summary>
+        /// Clears and adds tasks and contacts
+        /// </summary>
         private void refresh()
         {
-            Refresh.IsEnabled = false;
-            RefreshButton.IsEnabled = false;
-            Refresh.Content = "Refreshing...";
-            RefreshButton.Header = "Refreshing...";
+            DisableRefreshButtons();
 
-            receiver.BlindBannedContacts = Properties.Settings.Default.BlindBannedContacts;
             contacts.Items.Clear();
             AddSavedContacts();
-            AddOnlineContacts();
+            AddOnlineContacts(EnableRefreshButtons);
             PingAllContacts();
 
+
+        }
+
+        private void EnableRefreshButtons()
+        {
             Refresh.IsEnabled = true;
             RefreshButton.IsEnabled = true;
             Refresh.Content = "Refresh";
             RefreshButton.Header = "Refresh";
         }
 
+        private void DisableRefreshButtons()
+        {
+            Refresh.IsEnabled = false;
+            RefreshButton.IsEnabled = false;
+            Refresh.Content = "Refreshing...";
+            RefreshButton.Header = "Refreshing...";
+        }
+
+
+        /// <summary>
+        /// Adds contacts actually loaded in dataloader
+        /// </summary>
         private void AddSavedContacts()
         {
             foreach (NameIPPair pair in dataLoader.Contacts)
                 AddContactFromPair(pair, true);
         }
 
-        private async void AddOnlineContacts()
+
+        /// <summary>
+        /// Adds all available clients in local network to contacts
+        /// </summary>
+        /// <param name="callback">Action called after adding (could be null)</param>
+        private async void AddOnlineContacts(Action callback)
         {
             IPAddress[] IPs = Dns.GetHostAddresses(Dns.GetHostName());
 
             Pinger pinger = new Pinger();
-            List<NameIPPair> pingerContacts = await pinger.GetOnlineContacts();
+            List<NameIPPair> pingerContacts = await pinger.GetOnlineContacts(1000);
             foreach (NameIPPair c in pingerContacts)
             {
                 if (!Properties.Settings.Default.ShowLocalClientInContacts && IPs.Contains(c.IP))
@@ -172,12 +193,19 @@ namespace Simple_File_Sender
                 else
                     AddContactFromPair(c, false);
             }
+            if (callback != null)
+                callback();
         }
 
         #region Event Handlers
 
         #region Buttons
 
+        /// <summary>
+        /// Adds contact to contacts list and saves it via dataloader
+        /// </summary>
+        /// <param name="penis"></param>
+        /// <param name="e"></param>
         private void AddContact_Click(object penis, RoutedEventArgs e)
         {
             ContactInput input = new ContactInput();
@@ -247,8 +275,8 @@ namespace Simple_File_Sender
 
         private void FactoryResetButton_Click(object sender, RoutedEventArgs e)
         {
-            MessageBoxResult result = System.Windows.MessageBox.Show("This will wipe all settings and banlist!\nDo you really want to continue?", "Factory reset", MessageBoxButton.YesNo, MessageBoxImage.Exclamation);
-            if(result == MessageBoxResult.Yes)
+            MessageBoxResult result = System.Windows.MessageBox.Show("This will wipe all settings and banlist! (keeps your contacts)\nDo you really want to continue?", "Factory reset", MessageBoxButton.YesNo, MessageBoxImage.Exclamation);
+            if (result == MessageBoxResult.Yes)
             {
                 Properties.Settings.Default.FirstRun = true;
                 Properties.Settings.Default.Save();
@@ -308,13 +336,22 @@ namespace Simple_File_Sender
             Visibility = System.Windows.Visibility.Visible;
         }
 
+        /// <summary>
+        /// File received handler
+        /// </summary>
+        /// <param name="task">Received file task</param>
         private void receiver_FileReceived(ReceiverTask task)
         {
             trayIcon.ShowBalloonTip(3000, "Octo Sender", task.ReceivedFileName + " received from " + task.SenderName, ToolTipIcon.Info);
         }
 
+        /// <summary>
+        /// File sent handler
+        /// </summary>
+        /// <param name="task">Sent file task</param>
         private void sender_FileSent(SenderTask task)
         {
+            // Show balloon tip
             trayIcon.ShowBalloonTip(3000, "Octo Sender", task.SourceFile.Name + " sent to " + task.TargetContact.ContactName, ToolTipIcon.Info);
         }
 
@@ -379,6 +416,7 @@ namespace Simple_File_Sender
             receiver.StopAllTasks();
             sender.StopAllTasks();
             receiver.Stop();
+            Thread.Sleep(100);
             System.Windows.Application.Current.Shutdown();
         }
 

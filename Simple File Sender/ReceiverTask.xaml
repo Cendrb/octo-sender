@@ -10,7 +10,7 @@
         <Label x:Name="Status" Content="Running..." Height="25" VerticalAlignment="Bottom" Foreground="Black" Background="#FFE6E6E6" Margin="0"/>
         <ProgressBar x:Name="ProgressBar" Margin="10,59,10,0" Height="17" VerticalAlignment="Top"/>
         <Label x:Name="ProgressLabel" Content="0 bytes received of  0 bytes total" Margin="10,71,10,0" FontSize="10" Height="23" VerticalAlignment="Top"/>
-        <Button x:Name="StartButton" Content="Start" HorizontalAlignment="Left" Margin="10,98,0,0" VerticalAlignment="Top" Width="75" Click="StartButton_Click"/>
+        <Button x:Name="OpenButton" Content="Open" HorizontalAlignment="Left" Margin="10,98,0,0" VerticalAlignment="Top" Width="75" Click="OpenButton_Click" IsEnabled="False"/>
         <Button x:Name="StopButton" Content="Stop" HorizontalAlignment="Center" Margin="91,98,90,0" Width="75" VerticalAlignment="Top" Click="StopButton_Click"/>
         <Button x:Name="DeleteButton" Content="Delete" Margin="0,98,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="75" Click="DeleteButton_Click"/>
         <Label x:Name="TargetLabel" Content="from Unknown (0.0.0.0)" HorizontalAlignment="Left" Margin="10,27,0,0" VerticalAlignment="Top"/>

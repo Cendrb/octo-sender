@@ -58,26 +58,24 @@ namespace Simple_File_Sender
         {
             if (await contact.Ping() > -1)
             {
-                sendFile(contact, file);
+                generateTask(contact, file).Start();
             }
             else
             {
-                MessageBox.Show("Selected contact seems to be offline (cannot be pinged)\nFile cannot be send", "Failed to ping", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DialogResult result = MessageBox.Show("Selected contact seems to be offline (cannot be pinged)\nDo you want to add it to queue and try it again later?", "Failed to ping", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
+                if (result == DialogResult.Yes)
+                    generateTask(contact, file);
             }
         }
 
-        private async void sendFile(Contact contact, string file)
+        private SenderTask generateTask(Contact contact, string file)
         {
-            int port = await GetFreePortWith(contact.IP);
-            if (port != -1)
-            {
-                SenderTask task = new SenderTask(file, new IPEndPoint(contact.IP, port), contact, Name);
-                task.Delete += task_Delete;
-                task.Completed += task_Completed;
-                usedPorts.Add(port);
-                tasks.Dispatcher.Invoke(() => tasks.Add(task));
-                task.Start();
-            }
+            SenderTask task = new SenderTask(file, getFreePortWith, contact, Name);
+            task.Delete += task_Delete;
+            task.Completed += task_Completed;
+            task.SuccessfullyCompleted += task_SuccessfullyCompleted;
+            tasks.Dispatcher.Invoke(() => tasks.Add(task));
+            return task;
         }
 
         public void StopAllTasks()
@@ -89,15 +87,20 @@ namespace Simple_File_Sender
             }
         }
 
-        private void task_Completed(SenderTask task)
+        private void task_SuccessfullyCompleted(SenderTask task)
         {
             tasks.Dispatcher.Invoke(() => FileSent(task));
-            usedPorts.Remove(task.Target.Port);
+            usedPorts.Remove(task.Port);
+        }
+
+        private void task_Completed(SenderTask task)
+        {
+            usedPorts.Remove(task.Port);
         }
 
         private void task_Delete(SenderTask task)
         {
-            usedPorts.Remove(task.Target.Port);
+            usedPorts.Remove(task.Port);
             tasks.Dispatcher.Invoke(() => tasks.Remove(task));
         }
 
@@ -110,7 +113,7 @@ namespace Simple_File_Sender
 
         private int getFreePortWith(IPAddress address)
         {
-            Thread.CurrentThread.Name = "Get free port with " + address.ToString();
+            //Thread.CurrentThread.Name = "Get free port with " + address.ToString();
             portSocket = new TcpClient();
             portSocket.Connect(address, 6969);
             int port = 6970;
@@ -141,7 +144,7 @@ namespace Simple_File_Sender
                         int receivedPort = BitConverter.ToInt32(portBuffer, 0);
 
                         // Abort sending when banned
-                        if(receivedPort == -1)
+                        if (receivedPort == -1)
                         {
                             Console.WriteLine("Connection to " + address.ToString() + " got refused");
                             throw new RefusedByOppositeSideException();
@@ -157,14 +160,13 @@ namespace Simple_File_Sender
             catch (RefusedByOppositeSideException e)
             {
                 Console.WriteLine(e.Message);
-                MessageBox.Show(e.Message, "Connection refused");
                 return -1;
             }
             finally
             {
                 portSocket.Close();
             }
-
+            usedPorts.Add(port);
             return port;
         }
     }

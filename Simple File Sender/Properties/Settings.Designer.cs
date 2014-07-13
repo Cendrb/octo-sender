@@ -73,7 +73,7 @@ namespace Simple_File_Sender.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool AskBeforeReceivingFile {
             get {
                 return ((bool)(this["AskBeforeReceivingFile"]));
@@ -130,6 +130,30 @@ namespace Simple_File_Sender.Properties {
             }
             set {
                 this["BlindBannedContacts"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool VerifyMD5 {
+            get {
+                return ((bool)(this["VerifyMD5"]));
+            }
+            set {
+                this["VerifyMD5"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("ask")]
+        public string FilesFromNonContacts {
+            get {
+                return ((string)(this["FilesFromNonContacts"]));
+            }
+            set {
+                this["FilesFromNonContacts"] = value;
             }
         }
     }

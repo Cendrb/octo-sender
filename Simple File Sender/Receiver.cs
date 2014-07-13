@@ -18,7 +18,8 @@ namespace Simple_File_Sender
 
         List<int> usedPorts;
 
-        public ItemCollection tasks { get; private set; }
+        public ItemCollection Tasks { get; private set; }
+        public ItemCollection Contacts { get; private set; }
 
         public string Name { get; set; }
 
@@ -26,14 +27,12 @@ namespace Simple_File_Sender
 
         public StringCollection BannedIPs { get; set; }
 
-        public bool BlindBannedContacts { get; set; }
-
         public int RunningTasks
         {
             get
             {
                 int counter = 0;
-                foreach (object o in tasks)
+                foreach (object o in Tasks)
                 {
                     ReceiverTask task = o as ReceiverTask;
                     if (task.Running)
@@ -47,7 +46,7 @@ namespace Simple_File_Sender
         {
             get
             {
-                return tasks.Count;
+                return Tasks.Count;
             }
         }
 
@@ -57,14 +56,19 @@ namespace Simple_File_Sender
 
         public Func<string, string> Path { get; set; }
 
-        public Receiver(List<int> usedPorts, ItemCollection collection, Func<string, string> path, string name)
+        public Receiver(List<int> usedPorts, ItemCollection tasks, ItemCollection contacts, Func<string, string> path, string name)
         {
-            BlindBannedContacts = false;
             BannedIPs = new StringCollection();
             Name = name;
             this.usedPorts = usedPorts;
-            tasks = collection;
+            this.Tasks = tasks;
+            Contacts = contacts;
             Path = path;
+
+            // Add used ports
+            usedPorts.Add(6969); // Main comm port (Receiver class)
+            usedPorts.Add(6967); // Name ping port (Receiver and Pinger class)
+            usedPorts.Add(6968); // Ping port (Receiver class)
         }
 
         public void Start()
@@ -75,15 +79,15 @@ namespace Simple_File_Sender
 
                 Thread thread = new Thread(new ThreadStart(PortListenerStart));
                 thread.SetApartmentState(ApartmentState.MTA);
-                thread.Name = "Port listener";
+                thread.Name = "Port listener (6969) - Receiver class";
                 thread.Start();
 
                 Thread pinger = new Thread(new ThreadStart(PingerStart));
-                pinger.Name = "Ping Receiver";
+                pinger.Name = "Ping listener (6968) - Receiver class";
                 pinger.Start();
 
                 Thread namePinger = new Thread(new ThreadStart(NamePingerStart));
-                namePinger.Name = "Name Ping Receiver";
+                namePinger.Name = "Name listener (6967) - Receiver class";
                 namePinger.Start();
             }
             else
@@ -106,7 +110,7 @@ namespace Simple_File_Sender
 
         public void StopAllTasks()
         {
-            foreach (object o in tasks)
+            foreach (object o in Tasks)
             {
                 ReceiverTask task = o as ReceiverTask;
                 task.Stop();
@@ -123,8 +127,8 @@ namespace Simple_File_Sender
                     while (Running)
                     {
                         TcpClient client = namePingerListener.AcceptTcpClient();
-                        if (BannedIPs.Contains((client.Client.RemoteEndPoint as IPEndPoint).Address.ToString()) && BlindBannedContacts)
-                            client.Client.Send(Helpers.GetBytes(StaticPenises.RefuseName, sizeof(char) * 128));
+                        if (BannedIPs.Contains((client.Client.RemoteEndPoint as IPEndPoint).Address.ToString()) && Properties.Settings.Default.BlindBannedContacts)
+                            client.Client.Send(Helpers.GetBytes(StaticPenises.BannedRefuseName, sizeof(char) * 128));
                         else
                             client.Client.Send(Helpers.GetBytes(Name, sizeof(char) * 128));
                         client.Close();
@@ -196,6 +200,16 @@ namespace Simple_File_Sender
                         {
                             TcpClient client = portCommListener.AcceptTcpClient();
 
+                            IPEndPoint remoteEndpoint = (client.Client.RemoteEndPoint as IPEndPoint);
+
+                            // Abort receiving if banned
+                                if (BannedIPs.Contains(remoteEndpoint.Address.ToString()))
+                                {
+                                    Console.WriteLine("Refusing connection because IP " + client.Client.RemoteEndPoint.ToString() + " is banned");
+                                    client.Client.Send(BitConverter.GetBytes(-1));
+                                    throw new IPBannedException(remoteEndpoint.Address);
+                                }
+
                             int receivedPort = 1;
                             int finalPort = 0;
 
@@ -205,17 +219,8 @@ namespace Simple_File_Sender
                                 client.Client.Receive(portBuffer);
                                 receivedPort = BitConverter.ToInt32(portBuffer, 0);
 
-
-                                // Abort receiving if banned
-                                if (BannedIPs.Contains((client.Client.RemoteEndPoint as IPEndPoint).Address.ToString()))
-                                {
-                                    Console.WriteLine("Refusing connection because IP " + client.Client.RemoteEndPoint.ToString() + " is banned");
-                                    client.Client.Send(BitConverter.GetBytes(-1));
-                                    throw new IPBannedException((client.Client.RemoteEndPoint as IPEndPoint).Address);
-                                }
-
                                 if (receivedPort == 0)
-                                    tasks.Dispatcher.Invoke(() => StartNewTask(IPAddress.Any, finalPort));
+                                    Tasks.Dispatcher.Invoke(() => StartNewTask(IPAddress.Any, finalPort));
                                 finalPort = 0;
 
                                 bool localFree = false;
@@ -254,25 +259,48 @@ namespace Simple_File_Sender
             }
         }
 
+        private bool IsInContacts(IPAddress address)
+        {
+            foreach(object o in Contacts)
+            {
+                Contact c = o as Contact;
+                if (c.IP == address)
+                    return true;
+            }
+            return false;
+        }
+
         private void StartNewTask(IPAddress endPoint, int receivedPort)
         {
             ReceiverTask task = new ReceiverTask(endPoint, receivedPort, Path);
-            tasks.Dispatcher.Invoke(() => tasks.Add(task));
-            task.AskBeforeReceiving.Value = Properties.Settings.Default.AskBeforeReceivingFile;
+            usedPorts.Add(receivedPort);
+            Tasks.Dispatcher.Invoke(() => Tasks.Add(task));
+            task.AskBeforeReceiving = Properties.Settings.Default.AskBeforeReceivingFile;
+            task.VerifyMD5 = Properties.Settings.Default.VerifyMD5;
             task.Delete += task_Delete;
             task.Completed += task_Completed;
+            task.IsInContacts = IsInContacts;
+            task.SuccessfullyCompleted += task_SuccessfullyCompleted;
             task.Start();
+        }
+
+        private void task_SuccessfullyCompleted(ReceiverTask task)
+        {
+            // Call Main thread event
+            Tasks.Dispatcher.Invoke(() => FileReceived(task));
         }
 
         private void task_Completed(ReceiverTask task)
         {
-            tasks.Dispatcher.Invoke(() => FileReceived(task));
+            // Remove blocked port
             usedPorts.Remove(task.Port);
         }
 
         private void task_Delete(ReceiverTask task)
         {
-            tasks.Dispatcher.Invoke(() => tasks.Remove(task));
+            // Remove task
+            Tasks.Dispatcher.Invoke(() => Tasks.Remove(task));
+            // Remove blocked port
             usedPorts.Remove(task.Port);
         }
     }

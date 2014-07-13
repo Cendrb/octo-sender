@@ -29,6 +29,7 @@ namespace Simple_File_Sender
     public partial class SenderTask : UserControl
     {
         public event Action<SenderTask> Completed = delegate { };
+        public event Action<SenderTask> SuccessfullyCompleted = delegate { };
         public event Action<SenderTask> Delete = delegate { };
 
         public int Timeout { get; set; }
@@ -50,25 +51,27 @@ namespace Simple_File_Sender
         }
         public bool Done { get; private set; }
 
+        public int Port { get; private set; }
+
+        private Func<IPAddress, int> port;
+
         public Contact TargetContact { get; private set; }
-        public IPEndPoint Target { get; private set; }
         public FileInfo SourceFile { get; private set; }
         public TcpClient Client { get; private set; }
         public string SenderName { get; private set; }
 
-        public SenderTask(string filePath, IPEndPoint target, Contact contact, string senderName)
+        public SenderTask(string filePath, Func<IPAddress, int> port, Contact contact, string senderName)
         {
             InitializeComponent();
             TargetContact = contact;
             Running = false;
             SenderName = senderName;
-            PacketSize = 65536;
+            PacketSize = StaticPenises.PacketSize;
+            this.port = port;
 
             SourceFile = new FileInfo(filePath);
-            if (!SourceFile.Exists)
-                throw new FileNotFoundException("File does not exist");
 
-            Target = target;
+            Dispatcher.BeginInvoke(new Action(() => updateProgress(0, SourceFile.Length)));
 
             Dispatcher.BeginInvoke(new Action(setBasicLabels));
         }
@@ -78,40 +81,55 @@ namespace Simple_File_Sender
             Task.Factory.StartNew(start);
         }
 
-        private void start()
+        private async void start()
         {
             Thread.CurrentThread.Name = "Sending " + SourceFile.Name;
 
             Running = true;
 
-            // Connect
-            status("Connecting to " + Target.ToString() + "...");
-
             try
             {
                 Client = new TcpClient();
 
+                if (!SourceFile.Exists)
+                    throw new FileNotFoundException("File does not exist");
+
+                if (await TargetContact.Ping() < 0)
+                    throw new UnaccesableRemoteClientException(TargetContact.IP);
+
+                status("Connecting to " + TargetContact.IP + "...");
+
+                // Gets free port
+                Port = port(TargetContact.IP);
+
+                if (Port == -1)
+                    throw new IPBannedException(TargetContact);
+
+                await Dispatcher.BeginInvoke(new Action(setBasicLabelsWithPort));
+
+                // Connect
+                status("Connecting to " + TargetContact.IP + ":" + Port.ToString() + "...");
+
+                await Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = false));
+                await Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = false));
+
+                Client.Connect(TargetContact.IP, Port);
+
+
                 status("Sending basic informations...");
-
-                Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = false));
-                Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = false));
-
-                try
-                {
-                    Client.Connect(Target.Address, Target.Port);
-                }
-                catch (SocketException e)
-                {
-                    status("Failed to connect to client");
-                    Console.WriteLine(e.Message);
-                    Running = false;
-                }
 
                 Client.Client.Send(Helpers.GetBytes(SourceFile.Name, sizeof(char) * 128));
                 Client.Client.Send(BitConverter.GetBytes(SourceFile.Length));
                 Client.Client.Send(Helpers.GetBytes(SenderName, sizeof(char) * 128));
 
-                Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = true));
+                await Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = true));
+
+                status("Waiting for opposite side...");
+
+                byte[] continueBuffer = new byte[sizeof(bool)];
+                Client.Client.Receive(continueBuffer);
+                if (!BitConverter.ToBoolean(continueBuffer, 0))
+                    throw new SendingRefusedException("Opposite side declined receiving this file");
 
                 FileStream stream = File.OpenRead(SourceFile.FullName);
 
@@ -124,67 +142,105 @@ namespace Simple_File_Sender
                 int sentBytes;
                 byte[] sentData = new byte[PacketSize];
                 long totalSentBytes = 0;
+                long lastSecondBytes = 0;
                 while ((sentBytes = stream.Read(sentData, 0, sentData.Length)) > 0)
                 {
+                    // Send data
                     Client.Client.Send(sentData);
                     totalSentBytes += sentBytes;
-
-                    if (!Running)
-                        throw new InterruptedByUserException();
+                    lastSecondBytes += sentBytes;
 
                     Dispatcher.Invoke(() => updateProgress(totalSentBytes, size));
                     if (secondWatch.ElapsedMilliseconds > 1000)
                     {
+                        // Runned every second
+
+                        if (!Running)
+                            throw new InterruptedByUserException();
+
                         secondWatch.Restart();
-                        Dispatcher.Invoke(() => updateSpeedAndTime(totalWatch.Elapsed, totalSentBytes, size));
+                        Dispatcher.Invoke(() => updateSpeedAndTime(totalWatch.Elapsed.TotalMilliseconds, totalSentBytes, size, lastSecondBytes));
+                        lastSecondBytes = 0;
                     }
                 }
                 totalWatch.Stop();
                 secondWatch.Stop();
 
-                Client.Client.Send(BitConverter.GetBytes(69));
+                // Sends receiver information about end of file
+                Client.Client.Send(BitConverter.GetBytes(-69));
 
-                status("Generating MD5 sum...");
-
-                stream = File.OpenRead(SourceFile.FullName);
-
-                using (MD5 md5 = MD5.Create())
+                // Gets information from receiver if it wants MD5 sum verification
+                byte[] verifyMD5Buffer = new byte[sizeof(bool)];
+                Client.Client.Receive(verifyMD5Buffer);
+                if (BitConverter.ToBoolean(verifyMD5Buffer, 0))
                 {
-                    Client.Client.Send(md5.ComputeHash(stream));
-                }
+                    status("Generating MD5 sum...");
 
-                Completed(this);
-                completed();
+                    using (stream = File.OpenRead(SourceFile.FullName))
+                    {
+                        using (MD5 md5 = MD5.Create())
+                        {
+                            byte[] md5Hash = md5.ComputeHash(stream);
+                            status("Sending MD5 sum...");
+                            Client.Client.Send(md5Hash);
+                        }
+                    }
+                }
+                successfullyCompleted();
             }
             catch (SocketException e)
             {
                 status("Sending was refused by opposite side");
                 Console.WriteLine(e.Message);
-                Running = false;
             }
             catch (InterruptedByUserException e)
             {
                 status(e.Message);
                 Console.WriteLine(e.Message);
             }
+            catch (SendingRefusedException e)
+            {
+                status(e.Message);
+                Console.WriteLine(e.Message);
+            }
+            catch (FileNotFoundException e)
+            {
+                status("Source file does not exist");
+                Console.WriteLine(e.Message);
+            }
+            catch (UnaccesableRemoteClientException e)
+            {
+                status(e.Message);
+                Console.WriteLine(e.Message);
+            }
+            catch (IPBannedException e)
+            {
+                status(e.Message);
+                Console.WriteLine(e.Message);
+            }
             finally
             {
+                Completed(this);
                 Stop();
                 Client.Close();
-                Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = true));
+                Dispatcher.Invoke(new Action(() => DeleteButton.IsEnabled = true));
                 if (Done)
-                    Dispatcher.BeginInvoke(new Action(() => StartButton.IsEnabled = false));
+                    Dispatcher.Invoke(new Action(() => StartButton.IsEnabled = false));
             }
         }
 
-        private void completed()
+        private void successfullyCompleted()
         {
+            SuccessfullyCompleted(this);
             status("Completed");
             Done = true;
         }
 
         public void Stop()
         {
+            Dispatcher.Invoke(new Action(() => SpeedValue.Content = "0 kbps"));
+            Dispatcher.Invoke(new Action(() => RemainingTime.Content = "00:00"));
+            Dispatcher.Invoke(new Action(() => setBasicLabels()));
             Running = false;
         }
 
@@ -211,12 +267,23 @@ namespace Simple_File_Sender
         private void setBasicLabels()
         {
             FileName.Content = SourceFile.Name;
-            setTargetLabel(Target, TargetContact.ContactName);
+            setTargetLabel(TargetContact.IP, TargetContact.ContactName);
         }
 
-        private void setTargetLabel(IPEndPoint target, string name)
+        private void setBasicLabelsWithPort()
         {
-            TargetLabel.Content = String.Format("for {1} ({0})", target.ToString(), name);
+            FileName.Content = SourceFile.Name;
+            setTargetLabel(TargetContact.IP, Port, TargetContact.ContactName);
+        }
+
+        private void setTargetLabel(IPAddress target, int port, string name)
+        {
+            TargetLabel.Content = String.Format("for {1} ({0}:{2})", target, name, port);
+        }
+
+        private void setTargetLabel(IPAddress target, string name)
+        {
+            TargetLabel.Content = String.Format("for {1} ({0})", target, name);
         }
 
         private void updateProgress(long sentBytes, long totalBytes)
@@ -229,16 +296,15 @@ namespace Simple_File_Sender
             ProgressBar.Value = sentBytes;
         }
 
-        private void updateSpeedAndTime(TimeSpan elapsedTime, long sentBytes, long totalBytes)
+        private void updateSpeedAndTime(double elapsedTime, long sentBytes, long totalBytes, long lastSecondBytes)
         {
-            ElapsedTime.Content = elapsedTime.ToString(@"mm\:ss");
+            ElapsedTime.Content = TimeSpan.FromMilliseconds(elapsedTime).ToString(@"mm\:ss");
 
-            double speed = (sentBytes / 1000) / elapsedTime.Seconds;
+            double speed = (lastSecondBytes / 1000) / (1);
             SpeedValue.Content = speed + " kb/s";
 
             int remaining = (int)(((totalBytes - sentBytes) / 1000) / speed);
-            TimeSpan remainingTime = new TimeSpan(0, 0, remaining);
-            RemainingTime.Content = remainingTime.ToString(@"mm\:ss");
+            RemainingTime.Content = TimeSpan.FromSeconds(remaining).ToString(@"mm\:ss");
         }
     }
 }

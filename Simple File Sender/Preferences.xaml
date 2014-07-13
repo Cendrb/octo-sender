@@ -1,16 +1,16 @@
 ﻿<Window x:Class="Simple_File_Sender.Preferences"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Preferences" Height="210" Width="288">
+        Title="Preferences" Height="375" Width="320">
     <Grid>
         <Button x:Name="CancelButton" Content="CANCEL" VerticalAlignment="Bottom" Width="{Binding ActualWidth, ElementName=SaveButton, Mode=OneWay}" Margin="0,0,10,10" Height="{Binding ActualHeight, ElementName=SaveButton, Mode=OneWay}" HorizontalAlignment="Right" Click="CancelButton_Click"/>
-        <Button x:Name="SaveButton" Content="SAVE" Margin="10,0,0,10" Height="40" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="125" Click="SaveButton_Click"/>
+        <Button x:Name="SaveButton" Content="SAVE" Margin="10,0,0,10" Height="40" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="141" Click="SaveButton_Click"/>
         <GroupBox Header="Miscellaneous" Margin="10,0,10,55" Height="48" VerticalAlignment="Bottom">
             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <CheckBox x:Name="ShowLocalClientButton" Content="Show your local client in online contacts" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,7,0,0"/>
+                <CheckBox x:Name="ShowLocalClientButton" Content="Show your local client in online contacts" VerticalAlignment="Top" Margin="10,7,0,0" HorizontalAlignment="Left" Width="232"/>
             </Grid>
         </GroupBox>
         <GroupBox Header="Banning" Margin="10,0,10,103" Height="68" VerticalAlignment="Bottom">
@@ -18,8 +18,24 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <CheckBox x:Name="ShowBlockedContactsButton" Content="Show banned contacts in contacts list" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,7,0,0"/>
-                <CheckBox x:Name="BlindBannedContactsButton" Content="Banned contacts cannot see you" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,27,0,0"/>
+                <CheckBox x:Name="ShowBlockedContactsButton" Content="Show banned contacts in contacts list" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,7,0,0"/>
+                <CheckBox x:Name="BlindBannedContactsButton" Content="Banned contacts cannot see you" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,27,0,0"/>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Security" Margin="10,0,10,171" Height="69" VerticalAlignment="Bottom">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <CheckBox x:Name="VerifyMD5Button" Content="Verify MD5 sum after receiving file" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,7,0,0"/>
+                <CheckBox x:Name="AskBeforeReceivingButton" Content="Ask before receiving any file" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,27,0,0"/>
+            </Grid>
+        </GroupBox>
+        <GroupBox Header="Files from clients which are not in your contact list" VerticalAlignment="Bottom" Margin="10,0,10,245" Height="89">
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <RadioButton x:Name="AcceptRadio" Margin="10,7,0,0" Content="Accept" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                <RadioButton x:Name="RejectRadio" Margin="10,27,0,0" Content="Reject" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                <RadioButton x:Name="AskRadio" Margin="10,47,0,0" Content="Ask before receiving" HorizontalAlignment="Left" VerticalAlignment="Top" IsChecked="True"/>
             </Grid>
         </GroupBox>
     </Grid>

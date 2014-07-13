@@ -35,7 +35,6 @@ namespace Simple_File_Sender
             set
             {
                 running = value;
-                Dispatcher.BeginInvoke(new Action(() => StartButton.IsEnabled = !Running));
                 Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = Running));
             }
         }
@@ -44,26 +43,33 @@ namespace Simple_File_Sender
         public int Port { get; private set; }
         public Func<string, string> SavePath { get; private set; }
 
+        public int PacketSize { get; set; }
         public string SenderName { get; private set; }
         public string ReceivedFileName { get; private set; }
+        public string FinalFile { get; private set; }
 
-        public bool Done { get; private set; }
+        public bool Success { get; private set; }
 
-        public BoolWrapper AskBeforeReceiving { get; set; }
+        public bool AskBeforeReceiving { get; set; }
+        public bool VerifyMD5 { get; set; }
 
+        public Func<IPAddress, bool> IsInContacts;
         public event Action<ReceiverTask> Completed = delegate { };
+        public event Action<ReceiverTask> SuccessfullyCompleted = delegate { };
         public event Action<ReceiverTask> Delete = delegate { };
 
         private TcpListener listener;
 
         public ReceiverTask(IPAddress address, int port, Func<string, string> savePath)
         {
+            VerifyMD5 = false;
             InitializeComponent();
-            AskBeforeReceiving = new BoolWrapper(false);
+            AskBeforeReceiving = false;
             Address = address;
             Port = port;
-            Done = false;
+            Success = false;
             SavePath = savePath;
+            PacketSize = StaticPenises.PacketSize;
         }
 
         public void Start()
@@ -108,22 +114,53 @@ namespace Simple_File_Sender
             Dispatcher.BeginInvoke(new Action(() => StopButton.IsEnabled = true));
 
             NetworkStream stream = client.GetStream();
-       
+
             try
             {
-                if (AskBeforeReceiving.Value)
+                // "Double ask" protection
+                bool askBeforeReceiving = true;
+                if (IsInContacts != null)
+                {
+                    IPEndPoint remoteEndpoint = client.Client.RemoteEndPoint as IPEndPoint;
+                    // Abort receiving if not in contacts + settings
+                    if (!IsInContacts(remoteEndpoint.Address))
+                    {
+                        // IP not in contacts
+                        switch ((FilesFromNonContacts)Enum.Parse(typeof(FilesFromNonContacts), Properties.Settings.Default.FilesFromNonContacts))
+                        {
+                            case FilesFromNonContacts.reject:
+                                throw new NotInContactsException(remoteEndpoint.Address);
+                            case FilesFromNonContacts.ask:
+                                MessageBoxResult result = MessageBox.Show(String.Format("User {0} ({1}) is not in your contacts.\nDo you want to receive {2} ({3} kb) from him?", SenderName, remoteEndpoint.Address, ReceivedFileName, size.ToString("n", StaticPenises.Format)), "Unknown sender!", MessageBoxButton.YesNo, MessageBoxImage.Exclamation);
+                                if (result == MessageBoxResult.No)
+                                    throw new NotInContactsException(remoteEndpoint.Address);
+                                else
+                                    // "Double ask" protection
+                                    askBeforeReceiving = false;
+                                break;
+                        }
+                    }
+                }
+
+                // Allow aborting
+                if (AskBeforeReceiving && askBeforeReceiving)
                 {
                     MessageBoxResult result = MessageBox.Show(String.Format("Do you want to receive {0} from {1}?", ReceivedFileName, SenderName), ReceivedFileName, MessageBoxButton.YesNo, MessageBoxImage.Question);
                     if (result == MessageBoxResult.No)
-                        throw new InterruptedByUserException();
+                        throw new SendingRefusedException("Sending was interrupted by user");
                 }
 
                 string path = getSavePath(ReceivedFileName, SenderName);
 
                 if (path == String.Empty)
-                    throw new InterruptedByUserException();
+                    throw new SendingRefusedException("Sending was interrupted by user");
 
-                using (FileStream file = new FileStream(Path.Combine(path, ReceivedFileName), FileMode.Create, FileAccess.Write, FileShare.Write))
+                // Send confirm signal
+                client.Client.Send(BitConverter.GetBytes(true));
+
+                FinalFile = Path.Combine(path, ReceivedFileName);
+
+                using (FileStream file = new FileStream(FinalFile, FileMode.Create, FileAccess.Write, FileShare.Write))
                 {
 
                     Stopwatch totalWatch = Stopwatch.StartNew();
@@ -131,53 +168,72 @@ namespace Simple_File_Sender
 
                     status("Receiving data...");
                     int recBytes;
-                    byte[] recData = new byte[65536];
+                    byte[] recData = new byte[PacketSize];
                     long totalRecBytes = 0;
+                    long lastSecondBytes = 0;
                     while ((recBytes = stream.Read(recData, 0, recData.Length)) > 0)
                     {
                         totalRecBytes += recBytes;
+                        lastSecondBytes += recBytes;
+
                         if (totalRecBytes > size)
                         {
                             recBytes -= (int)(totalRecBytes - size);
                             totalRecBytes = size;
                         }
 
-                        if (BitConverter.ToInt32(recData, 0) == 69)
+                        // Stop receiving file to receive MD5
+                        if (BitConverter.ToInt32(recData, 0) == -69)
                             break;
 
+                        // Write to file
                         file.Write(recData, 0, recBytes);
 
-                        if (!Running)
-                            throw new InterruptedByUserException();
-
-                        Dispatcher.Invoke(() => updateProgress(totalRecBytes, size));
+                        // Update labels and bars
+                        Dispatcher.BeginInvoke(new Action(() => updateProgress(totalRecBytes, size)));
                         if (secondWatch.ElapsedMilliseconds > 1000)
                         {
+                            // Runned each second
+
+                            // Allow stop
+                            if (!Running)
+                                throw new InterruptedByUserException();
+
                             secondWatch.Restart();
-                            Dispatcher.Invoke(() => updateSpeedAndTime(totalWatch.Elapsed, totalRecBytes, size));
+                            Dispatcher.Invoke(new Action(() => updateSpeedAndTime(totalWatch.Elapsed.TotalMilliseconds, totalRecBytes, size, lastSecondBytes)));
+                            lastSecondBytes = 0;
                         }
                     }
                     totalWatch.Stop();
                     secondWatch.Stop();
                 }
 
-                status("Receiving MD5 sum...");
-                byte[] md5 = new byte[16];
-                client.Client.Receive(md5);
+                // Send sender information if this task wants MD5 verification
+                client.Client.Send(BitConverter.GetBytes(VerifyMD5));
 
-                status("Validating file using MD5 sum...");
-                using (FileStream file = File.OpenRead(Path.Combine(path, name)))
+                if (VerifyMD5)
                 {
-                    using (MD5 outMD5 = MD5.Create())
+                    status("Receiving MD5 sum...");
+                    byte[] md5 = new byte[16];
+                    client.Client.Receive(md5);
+
+                    status("Validating file using MD5 sum...");
+                    using (FileStream file = File.OpenRead(FinalFile))
                     {
-                        byte[] hash = outMD5.ComputeHash(file);
-                        if (!Enumerable.SequenceEqual(md5, hash))
-                            throw new InvalidOperationException("File is damaged and probably could not be opened");
+                        using (MD5 outMD5 = MD5.Create())
+                        {
+                            byte[] hash = outMD5.ComputeHash(file);
+                            if (!Enumerable.SequenceEqual(md5, hash))
+                                throw new FileFormatException("File is damaged and probably could not be opened");
+                        }
                     }
                 }
-
-                Completed(this);
-                completed();
+                successfullyCompleted();
+            }
+            catch (IOException e)
+            {
+                status("Failed to save received file");
+                Console.WriteLine(e.Message);
             }
             catch (SocketException e)
             {
@@ -189,19 +245,33 @@ namespace Simple_File_Sender
                 status(e.Message);
                 Console.WriteLine(e.Message);
             }
-            catch(InvalidOperationException e)
+            catch (SendingRefusedException e)
             {
+                // decline receiving
+                client.Client.Send(BitConverter.GetBytes(false));
+                status(e.Message);
+                Console.WriteLine(e.Message);
+            }
+            catch (FileFormatException e)
+            {
+                status(e.Message);
+                Console.WriteLine(e.Message);
+            }
+            catch (NotInContactsException e)
+            {
+                // decline receiving
+                client.Client.Send(BitConverter.GetBytes(false));
                 status(e.Message);
                 Console.WriteLine(e.Message);
             }
             finally
             {
+                Completed(this);
                 stream.Close();
                 client.Close();
                 Stop();
+                Dispatcher.BeginInvoke(new Action(() => OpenButton.IsEnabled = true));
                 Dispatcher.BeginInvoke(new Action(() => DeleteButton.IsEnabled = true));
-                if(Done)
-                    Dispatcher.BeginInvoke(new Action(() => StartButton.IsEnabled = false)); 
             }
         }
 
@@ -220,27 +290,35 @@ namespace Simple_File_Sender
             ProgressBar.Value = sentBytes;
         }
 
-        private void updateSpeedAndTime(TimeSpan elapsedTime, long sentBytes, long totalBytes)
+        private void updateSpeedAndTime(double elapsedTime, long sentBytes, long totalBytes, long lastSecondBytes)
         {
-            ElapsedTime.Content = elapsedTime.ToString(@"mm\:ss");
+            ElapsedTime.Content = TimeSpan.FromMilliseconds(elapsedTime).ToString(@"mm\:ss");
 
-            double speed = (sentBytes / 1000) / elapsedTime.Seconds;
+            double speed = (lastSecondBytes / 1000) / (1);
             SpeedValue.Content = speed + " kb/s";
 
             int remaining = (int)(((totalBytes - sentBytes) / 1000) / speed);
-            TimeSpan remainingTime = new TimeSpan(0, 0, remaining);
-            RemainingTime.Content = remainingTime.ToString(@"mm\:ss");
+            RemainingTime.Content = TimeSpan.FromSeconds(remaining).ToString(@"mm\:ss");
         }
 
-        private void completed()
+        private void successfullyCompleted()
         {
+            SuccessfullyCompleted(this);
             status("Completed");
-            Done = true;
+            Success = true;
         }
 
-        private void StartButton_Click(object sender, RoutedEventArgs e)
+        private void OpenButton_Click(object sender, RoutedEventArgs ea)
         {
-            Start();
+            try
+            {
+                System.Diagnostics.Process.Start(FinalFile);
+            }
+            catch (FileNotFoundException e)
+            {
+                status("File was not found");
+                Console.WriteLine(e.Message);
+            }
         }
 
         private void StopButton_Click(object sender, RoutedEventArgs e)
