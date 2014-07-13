@@ -70,12 +70,13 @@ namespace Simple_File_Sender
         private void AskCheckbox_Checked(object sender, RoutedEventArgs e)
         {
             DefaultButton.IsEnabled = false;
-            DefaultSavePath = "None";
+            PathTextBlock.IsEnabled = false;
         }
 
         private void AskCheckbox_Unchecked(object sender, RoutedEventArgs e)
         {
             DefaultButton.IsEnabled = true;
+            PathTextBlock.IsEnabled = true;
         }
 
         private void CancelButt_Click(object sender, RoutedEventArgs e)
