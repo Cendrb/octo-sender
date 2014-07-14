@@ -47,7 +47,14 @@ namespace Simple_File_Sender
             trayIcon.Text = "Octo Sender";
             trayIcon.Visible = true;
             trayIcon.ContextMenu = trayMenu;
-            trayIcon.Icon = new Icon("Resources\\icon.ico");
+            try
+            {
+                trayIcon.Icon = new Icon("Resources\\icon.ico");
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
             trayIcon.MouseClick += trayIcon_MouseClick;
             trayIcon.MouseMove += trayIcon_MouseMove;
             trayIcon.BalloonTipClicked += trayIcon_BalloonTipClicked;

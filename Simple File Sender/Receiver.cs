@@ -265,7 +265,7 @@ namespace Simple_File_Sender
             foreach(object o in Contacts)
             {
                 Contact c = o as Contact;
-                if (c.IP == address)
+                if (c.IP.ToString() == address.ToString())
                     return true;
             }
             return false;

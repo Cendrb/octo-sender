@@ -121,7 +121,7 @@ namespace Simple_File_Sender
                 bool askBeforeReceiving = true;
                 if (IsInContacts != null)
                 {
-                    IPEndPoint remoteEndpoint = client.Client.RemoteEndPoint as IPEndPoint;
+                    IPEndPoint remoteEndpoint = client.Client.LocalEndPoint as IPEndPoint;
                     // Abort receiving if not in contacts + settings
                     if (!IsInContacts(remoteEndpoint.Address))
                     {
@@ -176,15 +176,15 @@ namespace Simple_File_Sender
                         totalRecBytes += recBytes;
                         lastSecondBytes += recBytes;
 
+                        // Stop receiving file to receive MD5
+                        if (BitConverter.ToInt32(recData, 0) == 69)
+                            break;
+
                         if (totalRecBytes > size)
                         {
                             recBytes -= (int)(totalRecBytes - size);
                             totalRecBytes = size;
                         }
-
-                        // Stop receiving file to receive MD5
-                        if (BitConverter.ToInt32(recData, 0) == -69)
-                            break;
 
                         // Write to file
                         file.Write(recData, 0, recBytes);
