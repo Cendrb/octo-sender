@@ -85,7 +85,7 @@ namespace Simple_File_Sender
                 {
                     // Shutdown application if window was closed
                     System.Windows.Application.Current.Shutdown();
-                    Thread.Sleep(50000000);
+                    Thread.Sleep(50);
                 }
                 else
                 {
