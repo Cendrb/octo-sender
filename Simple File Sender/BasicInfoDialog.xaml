@@ -4,7 +4,7 @@
         Title="Basic configuration" Height="191" Width="503" ResizeMode="NoResize">
     <Grid>
         <Label Content="Username" HorizontalAlignment="Left" Margin="10,10,0,0" Height="28" VerticalAlignment="Top"/>
-        <TextBox x:Name="UsernameText" Margin="89,10,10,0" TextWrapping="Wrap" Height="25" VerticalAlignment="Top" ToolTip="Your username will be shown to other Octo Sender users"/>
+        <TextBox x:Name="UsernameText" Margin="89,10,10,0" TextWrapping="Wrap" Height="25" VerticalAlignment="Top" ToolTip="Your username will be shown to other Octo Sender users same network" MaxLength="20"/>
         <Button x:Name="SaveButt" Content="SAVE" Margin="10,121,253,10" Click="SaveButt_Click" ToolTip="Everything could be changed later"/>
         <CheckBox x:Name="AskCheckbox" Content="Ask on every incoming file" HorizontalAlignment="Left" Margin="10,69,0,0" VerticalAlignment="Top" Checked="AskCheckbox_Checked" Unchecked="AskCheckbox_Unchecked"/>
         <Label Content="Received files options" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,41,0,0"/>

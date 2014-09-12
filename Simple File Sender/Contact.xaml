@@ -3,13 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             mc:Ignorable="d" d:DesignWidth="300" Height="68">
+             mc:Ignorable="d" MinWidth="300" MinHeight="68">
     <Grid>
         <Label x:Name="NameLabel" Content="{Binding Path=FormattedIPAndName, Mode=OneWay}" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="14"/>
         <Label x:Name="StatusLabel" Content="Pinging..." HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,29,0,0"/>
         <Label x:Name="PingLabel" Content="Pinging..." HorizontalAlignment="Left" Margin="91,29,0,0" VerticalAlignment="Top"/>
-        <Button x:Name="sendFileButton" Content="Send file..." HorizontalAlignment="Left" Margin="215,38,0,0" VerticalAlignment="Top" Width="75" Click="sendFileButton_Click"/>
-        <Button x:Name="removeButton" Content="Block" HorizontalAlignment="Left" Margin="215,10,0,0" VerticalAlignment="Top" Width="75" Click="removeButton_Click"/>
+        <Button x:Name="sendFileButton" Content="Send file..." HorizontalAlignment="Right" Margin="0,38,10,0" VerticalAlignment="Top" Width="75" Click="sendFileButton_Click"/>
+        <Button x:Name="removeButton" Content="Block" HorizontalAlignment="Right" Margin="0,10,10,0" VerticalAlignment="Top" Width="75" Click="removeButton_Click"/>
 
     </Grid>
 </UserControl>

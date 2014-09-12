@@ -166,9 +166,6 @@ namespace Simple_File_Sender
                 totalWatch.Stop();
                 secondWatch.Stop();
 
-                // Sends receiver information about end of file
-                Client.Client.Send(BitConverter.GetBytes(69));
-
                 // Gets information from receiver if it wants MD5 sum verification
                 byte[] verifyMD5Buffer = new byte[sizeof(bool)];
                 Client.Client.Receive(verifyMD5Buffer);

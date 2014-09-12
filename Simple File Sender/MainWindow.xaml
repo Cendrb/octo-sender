@@ -1,24 +1,26 @@
 ﻿<Window x:Name="window" x:Class="Simple_File_Sender.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Octo Sender" Height="642" Width="943" Closed="Window_Closed" Closing="Window_Closing" ResizeMode="CanMinimize">
+        Title="Octo Sender" Height="800" Width="1073" Closed="Window_Closed" Closing="Window_Closing" ResizeMode="CanResizeWithGrip">
     <Grid>
-        <Grid Margin="0,57,0,0">
+        <Grid Margin="0,0,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
-            <ListBox x:Name="receivingQueue" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="0"/>
-            <ListBox x:Name="contacts" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="1"/>
-            <ListBox x:Name="sendingQueue" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="2"/>
+            
+            <ListBox x:Name="receivingQueue" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="0" Margin="0,60,0,0"/>
+            <ListBox x:Name="contacts" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="1" Margin="0,60,0,0"/>
+            <ListBox x:Name="sendingQueue" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="2" Margin="0,60,0,0"/>
 
+            <Label x:Name="receivingQueueLabel" Content="Receiving queue" HorizontalAlignment="Left" Margin="10,19,0,0" VerticalAlignment="Top" FontSize="17" Grid.Column="0"/>
+            <Label Content="Contacts list" HorizontalAlignment="Left" Margin="10,19,0,0" VerticalAlignment="Top" FontSize="{Binding FontSize, ElementName=receivingQueueLabel}" Grid.Column="1"/>
+            <Label Content="Sending queue" HorizontalAlignment="Left" Margin="10,19,0,0" VerticalAlignment="Top" FontSize="{Binding FontSize, ElementName=receivingQueueLabel}" Grid.Column="2"/>
+            <Button x:Name="AddContact" Content="Add contact..." HorizontalAlignment="Left" Margin="120,27,0,0" VerticalAlignment="Top" Width="84" Click="AddContact_Click" Grid.Column="1" ToolTip="Allows you to add contact manually"/>
+            <Button x:Name="Refresh" Content="Refresh" HorizontalAlignment="Left" VerticalAlignment="Top" Width="84" Margin="209,27,0,0" Click="Refresh_Click" Grid.Column="1" ToolTip="Scans local network for available targets and tries to get their response time (ping)"/>
         </Grid>
-        <Label x:Name="receivingQueueLabel" Content="Receiving queue" HorizontalAlignment="Left" Margin="10,18,0,518" VerticalAlignment="Top" FontSize="17"/>
-        <Label Content="Contacts list" HorizontalAlignment="Left" Margin="313,18,0,518" VerticalAlignment="Top" FontSize="{Binding FontSize, ElementName=receivingQueueLabel}"/>
-        <Label Content="Sending queue" HorizontalAlignment="Left" Margin="626,18,0,518" VerticalAlignment="Top" FontSize="{Binding FontSize, ElementName=receivingQueueLabel}"/>
-        <Button x:Name="AddContact" Content="Add contact..." HorizontalAlignment="Left" Margin="514,25,0,0" VerticalAlignment="Top" Width="84" Click="AddContact_Click" ToolTip="Allows you to add contact manually"/>
-        <Button x:Name="Refresh" Content="Refresh" HorizontalAlignment="Left" VerticalAlignment="Top" Width="84" Margin="425,25,0,0" Click="Refresh_Click" ToolTip="Scans local network for available targets and tries to get their response time (ping)"/>
+
         <DockPanel HorizontalAlignment="Stretch" Height="100" LastChildFill="False" VerticalAlignment="Top">
             <Menu HorizontalAlignment="Stretch" Height="18" VerticalAlignment="Top" Width="{Binding ActualWidth, ElementName=window, Mode=OneWay}">
                 <MenuItem Header="_File">

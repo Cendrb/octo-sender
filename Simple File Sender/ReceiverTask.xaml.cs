@@ -176,15 +176,15 @@ namespace Simple_File_Sender
                         totalRecBytes += recBytes;
                         lastSecondBytes += recBytes;
 
-                        // Stop receiving file to receive MD5
-                        if (BitConverter.ToInt32(recData, 0) == 69)
-                            break;
-
                         if (totalRecBytes > size)
                         {
                             recBytes -= (int)(totalRecBytes - size);
                             totalRecBytes = size;
                         }
+
+                        // Stop receiving file to receive MD5
+                        if (totalRecBytes >= size)
+                            break;
 
                         // Write to file
                         file.Write(recData, 0, recBytes);
@@ -213,9 +213,9 @@ namespace Simple_File_Sender
 
                 if (VerifyMD5)
                 {
-                    status("Receiving MD5 sum...");
                     byte[] md5 = new byte[16];
-                    client.Client.Receive(md5);
+                    Task md5Receiver = new Task(new Action(() => client.Client.Receive(md5)));
+                    md5Receiver.Start();
 
                     status("Validating file using MD5 sum...");
                     using (FileStream file = File.OpenRead(FinalFile))
@@ -223,6 +223,8 @@ namespace Simple_File_Sender
                         using (MD5 outMD5 = MD5.Create())
                         {
                             byte[] hash = outMD5.ComputeHash(file);
+                            status("Receiving MD5 sum...");
+                            md5Receiver.Wait();
                             if (!Enumerable.SequenceEqual(md5, hash))
                                 throw new FileFormatException("File is damaged and probably could not be opened");
                         }
