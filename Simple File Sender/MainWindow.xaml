@@ -1,7 +1,7 @@
 ﻿<Window x:Name="window" x:Class="Simple_File_Sender.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Octo Sender" Height="800" Width="1073" Closed="Window_Closed" Closing="Window_Closing" ResizeMode="CanResizeWithGrip">
+        Title="Octo Sender" Height="794" Width="965" Closed="Window_Closed" Closing="Window_Closing" ResizeMode="CanMinimize">
     <Grid>
         <Grid Margin="0,0,0,0">
             <Grid.ColumnDefinitions>
@@ -9,7 +9,7 @@
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
-            
+
             <ListBox x:Name="receivingQueue" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="0" Margin="0,60,0,0"/>
             <ListBox x:Name="contacts" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="1" Margin="0,60,0,0"/>
             <ListBox x:Name="sendingQueue" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Column="2" Margin="0,60,0,0"/>

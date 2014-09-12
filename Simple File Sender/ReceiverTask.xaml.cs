@@ -117,6 +117,7 @@ namespace Simple_File_Sender
 
             try
             {
+                status("Validating sender...");
                 // "Double ask" protection
                 bool askBeforeReceiving = true;
                 if (IsInContacts != null)
@@ -142,6 +143,7 @@ namespace Simple_File_Sender
                     }
                 }
 
+                status("Waiting for user confirmation...");
                 // Allow aborting
                 if (AskBeforeReceiving && askBeforeReceiving)
                 {
@@ -182,12 +184,12 @@ namespace Simple_File_Sender
                             totalRecBytes = size;
                         }
 
+                        // Write to file
+                        file.Write(recData, 0, recBytes);
+
                         // Stop receiving file to receive MD5
                         if (totalRecBytes >= size)
                             break;
-
-                        // Write to file
-                        file.Write(recData, 0, recBytes);
 
                         // Update labels and bars
                         Dispatcher.BeginInvoke(new Action(() => updateProgress(totalRecBytes, size)));
@@ -206,6 +208,8 @@ namespace Simple_File_Sender
                     }
                     totalWatch.Stop();
                     secondWatch.Stop();
+                    // Update labels and bars
+                    Dispatcher.BeginInvoke(new Action(() => updateProgress(totalRecBytes, size)));
                 }
 
                 // Send sender information if this task wants MD5 verification
@@ -217,7 +221,7 @@ namespace Simple_File_Sender
                     Task md5Receiver = new Task(new Action(() => client.Client.Receive(md5)));
                     md5Receiver.Start();
 
-                    status("Validating file using MD5 sum...");
+                    status("Generating MD5 sum...");
                     using (FileStream file = File.OpenRead(FinalFile))
                     {
                         using (MD5 outMD5 = MD5.Create())
@@ -225,6 +229,7 @@ namespace Simple_File_Sender
                             byte[] hash = outMD5.ComputeHash(file);
                             status("Receiving MD5 sum...");
                             md5Receiver.Wait();
+                            status("Validating ND5 sum");
                             if (!Enumerable.SequenceEqual(md5, hash))
                                 throw new FileFormatException("File is damaged and probably could not be opened");
                         }
